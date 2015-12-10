@@ -66,9 +66,12 @@ class Recorder(object):
 
 	def record_from_mic(self):
 		self.create_session()
+		arecord_args = 'arecord -D plughw:1,0 -f cd -t raw' 
+		lame_args = 'lame -r -h -V 0 - {}'.format(os.path.join(self.session_dir, 'session.mp3'))
 
-		args = 'arecord -D plughw:1,0 -f cd ' + os.path.join(self.session_dir, 'session.wav')
-		self.rec_process = subprocess.Popen(args.split())
+		self.arecord_process = subprocess.Popen(arecord_args.split(), stdout=subprocess.PIPE)
+		self.lame_process = subprocess.Popen(lame_args.split(), stdin=self.arecord_process.stdout)
+
 
 	def start_recording(self):
 		print('starting recording')
@@ -88,7 +91,8 @@ class Recorder(object):
 		print('stopping recording')
 		GPIO.remove_event_detect(marker_btn)
 
-		self.rec_process.terminate()
+		self.arecord_process.terminate()
+		self.lame_process.terminate()
 
 		with open(os.path.join(self.session_dir, 'metadata.json'), 'w') as f:
 			print(json.dumps(self.metadata, indent=4), file=f)
