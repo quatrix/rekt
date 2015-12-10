@@ -1,27 +1,10 @@
-# program starts indicator led is green
-# register start/stop recording button event handler
-# when event fires:
-# * if not recording:
-#   0. create a session dir (based on timestamp)
-#	1. start recording
-#   2. turn indicator led to red
-#   3. register marker button event handler
-# * if recording:
-#	1. stop recording
-#   2. turn indicator light to initial state
-#   3. unregister marker button event handler
-#   4. move session dir to the upload folder
-# marker button event handler:
-#	should only fire while in recording state,
-#   append a new line to the markers.txt file in the session dir
-#   new line contains timestamp,id (registered with the button)
-# when idle:
-# check if there's something to upload, if so:
-#	1. upload it
-#   2. move it to 'uploaded' dir
+from __future__ import print_function
 
 import RPi.GPIO as GPIO
-from time import sleep
+import subprocess
+import json
+import time
+import os
 
 toggle_rec_btn = 18
 marker_btn = 17
@@ -33,6 +16,9 @@ led_blue = 20
 led_green = 21
 
 led_rgb = [led_red, led_blue, led_green]
+
+temp_dir = '/rec/temp'
+done_dir = '/rec/to_upload'
 
 
 class Recorder(object):
@@ -67,22 +53,57 @@ class Recorder(object):
 
 		self.recording = not self.recording
 
+	def create_session(self):
+		self.session_start_time = time.time()
+		session = time.strftime("%d_%m_%y_%H_%M_%S", time.gmtime(self.session_start_time))
+		self.session_dir = os.path.join(temp_dir, session)
+		self.session_dir_done = os.path.join(done_dir, session)
+		os.mkdir(self.session_dir)
+
+	@property
+	def time_since_session_started(self):
+		return time.time() - self.session_start_time
+
+	def record_from_mic(self):
+		self.create_session()
+
+		args = 'arecord -D plughw:1,0 -f cd ' + os.path.join(self.session_dir, 'session.wav')
+		self.rec_process = subprocess.Popen(args.split())
+
 	def start_recording(self):
 		print('starting recording')
 		GPIO.add_event_detect(marker_btn, GPIO.FALLING, callback=self.handle_marker, bouncetime=200)
+		self.markers = []
+		self.record_from_mic()
 		self.make_rgb_red()
+
+	@property
+	def metadata(self):
+		return {
+			'session': self.session_start_time,
+			'markers': self.markers,
+		}
 
 	def stop_recording(self):
 		print('stopping recording')
 		GPIO.remove_event_detect(marker_btn)
+
+		self.rec_process.terminate()
+
+		with open(os.path.join(self.session_dir, 'metadata.json'), 'w') as f:
+			print(json.dumps(self.metadata, indent=4), file=f)
+
+		os.rename(self.session_dir, self.session_dir_done)
+
 		self.make_rgb_green()
 
 	def handle_marker(self, *args):
 		print('setting mark')
+		self.markers.append(self.time_since_session_started)
 
 	def serve(self):
 		while True:
-			sleep(999)
+			time.sleep(999)
 
 
 def main():
