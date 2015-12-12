@@ -6,10 +6,7 @@ import json
 import time
 import os
 
-toggle_rec_btn = 18
-marker_btn = 17
-
-input_channels = [toggle_rec_btn, marker_btn]
+pedal = 18
 
 led_red = 16
 led_blue = 20
@@ -21,17 +18,49 @@ temp_dir = '/rec/temp'
 done_dir = '/rec/to_upload'
 
 
+hold_time = 1.2 #seconds
+
 class Recorder(object):
 	def __init__(self):
 		self.recording = False
 		self.setup_hardware()
+		self.last_pedal_press = None
 
 	def setup_hardware(self):
 		GPIO.setmode(GPIO.BCM)
-		GPIO.setup(input_channels, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(pedal, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 		GPIO.setup(led_rgb, GPIO.OUT)
-		GPIO.add_event_detect(toggle_rec_btn, GPIO.FALLING, callback=self.handle_toggle_rec, bouncetime=400)
+		GPIO.add_event_detect(pedal, GPIO.RISING, callback=self.on_pedal_change, bouncetime=50)
 		self.make_rgb_green()
+
+	def on_pedal_change(self, channel):
+		time.sleep(0.02)
+
+		if not GPIO.input(channel):
+			return
+
+		if self.last_pedal_press is not None and time.time() - self.last_pedal_press < 0.2:
+			return
+
+		print('pedal change', channel)
+
+		t0 = time.time()
+
+		while GPIO.input(channel):
+			print('holding...')
+			self.last_pedal_press = time.time()
+			
+			if self.last_pedal_press - t0 > hold_time:
+				break;
+
+			time.sleep(0.1)
+
+		if time.time() - t0 > hold_time:
+			self.toggle_rec()
+		elif self.recording:
+			self.set_mark()
+
+		self.last_pedal_press = time.time()
 
 	def make_rgb_green(self):
 		self.turn_rgb_off()
@@ -41,11 +70,16 @@ class Recorder(object):
 		self.turn_rgb_off()
 		GPIO.output(led_red, 0)
 
+	def make_rgb_purple(self):
+		self.turn_rgb_off()
+		GPIO.output(led_red, 0)
+		GPIO.output(led_blue, 0)
+
 	def turn_rgb_off(self):
 		for led in led_rgb:
 			GPIO.output(led, 1)
 
-	def handle_toggle_rec(self, *args, **kwargs):
+	def toggle_rec(self):
 		if self.recording:
 			self.stop_recording()
 		else:
@@ -75,7 +109,6 @@ class Recorder(object):
 
 	def start_recording(self):
 		print('starting recording')
-		GPIO.add_event_detect(marker_btn, GPIO.FALLING, callback=self.handle_marker, bouncetime=200)
 		self.markers = []
 		self.record_from_mic()
 		self.make_rgb_red()
@@ -89,8 +122,6 @@ class Recorder(object):
 
 	def stop_recording(self):
 		print('stopping recording')
-		GPIO.remove_event_detect(marker_btn)
-
 		self.arecord_process.terminate()
 		self.lame_process.terminate()
 
@@ -101,13 +132,21 @@ class Recorder(object):
 
 		self.make_rgb_green()
 
-	def handle_marker(self, *args):
+	def set_mark(self):
 		print('setting mark')
 		self.markers.append(self.time_since_session_started)
 
+		self.make_rgb_purple()
+		time.sleep(0.2)
+		self.make_rgb_red()
+
+	def read_pedal(self):
+		return GPIO.input(pedal)
+
 	def serve(self):
 		while True:
-			time.sleep(999)
+			time.sleep(999)	
+			
 
 
 def main():
