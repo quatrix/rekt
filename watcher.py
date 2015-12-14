@@ -1,7 +1,13 @@
+#!/usr/bin/env python
+
 import os
 import subprocess
 import requests
+import time
+import sys
+import logging
 
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 waiting_to_upload_dir = '/rec/to_upload/'
 done_dir = '/rec/done'
@@ -9,6 +15,7 @@ done_dir = '/rec/done'
 
 class Task(object):
 	def __init__(self, session_dir):
+		logging.info('working on %s', session_dir)
 		self.session_dir = session_dir
 		self.session_file = os.path.join(session_dir, 'session.mp3')
 		self.metadata_file = os.path.join(session_dir, 'metadata.json')
@@ -34,16 +41,25 @@ class Task(object):
 		]
 
 		r = requests.post(url, files=multiple_files)
-		print(r.text)
+
+		if r.status_code != 200:
+			raise RuntimeError('{} - failed to upload to server: {}'.format(self.session_file, r.text))
+
+		logging.info('done uploading %s', self.session_dir)
 
 	def move_to_done(self):
 		os.rename(self.session_dir, os.path.join(done_dir, os.path.basename(self.session_dir)))
 		
 
 def main():
-	for f in os.listdir(waiting_to_upload_dir):
-		Task(os.path.join(waiting_to_upload_dir, f)).handle()
+	while True:
+		for f in os.listdir(waiting_to_upload_dir):
+			try:
+				Task(os.path.join(waiting_to_upload_dir, f)).handle()
+			except Exception:
+				logging.exception('error uploading session')
 
+		time.sleep(1)
 
 if __name__ == '__main__':
 	main()
