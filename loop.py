@@ -55,7 +55,7 @@ class Recorder(object):
 			if self.last_pedal_press - t0 > hold_time:
 				break;
 
-			time.sleep(0.1)
+			time.sleep(0.01)
 
 		if time.time() - t0 > hold_time:
 			self.toggle_rec()
@@ -90,7 +90,7 @@ class Recorder(object):
 		self.recording = not self.recording
 
 	def create_session(self):
-		self.session_start_time = time.time()
+		self.session_start_time = int(time.time())
 		session = time.strftime("%d_%m_%y_%H_%M_%S", time.gmtime(self.session_start_time))
 		self.session_dir = os.path.join(temp_dir, session)
 		self.session_dir_done = os.path.join(done_dir, session)
