@@ -9,8 +9,9 @@ import sys
 import logging
 import RPi_I2C_driver
 
+from Queue import Queue, Empty
+from threading import Thread
 
-# Print happy welcome message on lines 1 and 3
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -18,28 +19,71 @@ waiting_to_upload_dir = '/rec/to_upload/'
 done_dir = '/rec/done'
 username = open('/rec/config/username').read().strip()
 
+class LCDManager(object):
+	def __init__(self):
+		self.q = Queue()
+		self.lcd = LCD()
+
+	def run(self):
+		while True:
+			try:
+				command = self.q.get_nowait()
+				msg, line = command
+				self.lcd.set(msg, line)
+			except Empty:
+				pass
+
+			self.lcd.update()
+			time.sleep(0.7)
+
+
+	def write(self, msg, line):
+		self.q.put((msg ,line))
+
+	def start(self):
+		Thread(target=self.run, args=()).start()
+
+
+
+def scrolling_text(text, chars):
+	while True:
+		if len(text) < chars:
+			yield text
+
+		yield text[:chars-1]
+		text = text[1:] + text[0]
+
+
 
 class LCD(object):
-	def __init__(self):
+	def __init__(self, chars=16, lines=2):
 		self.lcd = RPi_I2C_driver.lcd()
-		self._last_msg = None
+		self.chars = chars
+		self.lines = [None for _ in xrange(lines)]
+		self._lines_text = [None for _ in xrange(lines)]
 
-	def clear(self):
-		self.lcd.lcd_display_string(' '*16, 1)
-		self.lcd.lcd_display_string(' '*16, 2)
 
-	def write(self, msg):
-		if msg == self._last_msg:
+	def set(self, text, line):
+		if self._lines_text[line] == text:
 			return
 
-		self._last_msg = msg
+		self._lines_text[line] = text
+		self.lines[line] = scrolling_text(text, self.chars)
 
-		self.clear()
+	def clear_line(self, line):
+		self.lcd.lcd_display_string(' '*self.chars, line+1)
 
-		for l, s in enumerate(msg.split('\n', 1), 1):
-			self.lcd.lcd_display_string(s, l)
+	def write_to_lcd(self, text, line):
+		self.lcd.lcd_display_string(text, line+1)
 
-lcd = LCD()
+	def update(self):
+		for line, generator in enumerate(self.lines):
+			if generator is None:
+				continue
+
+			self.clear_line(line)
+			self.write_to_lcd(next(generator), line)
+
 
 class Task(object):
 	def __init__(self, session_dir):
@@ -64,14 +108,14 @@ class Task(object):
 		url = 'http://edisdead.com:55666/upload/{}/'.format(username)
 
 		multiple_files = [
-			('session', ('session.mp3', open(self.session_file, 'rb'), 'audio/mpeg')),
-			('metadata', ('metadata.json', open(self.metadata_file, 'rb'), 'application/json'))
+			('files[session]', ('session.mp3', open(self.session_file, 'rb'), 'audio/mpeg')),
+			('files[metadata]', ('metadata.json', open(self.metadata_file, 'rb'), 'application/json'))
 		]
 
 		r = requests.post(url, files=multiple_files)
 
 		if r.status_code != 200:
-			raise RuntimeError('{} - failed to upload to server: {}'.format(self.session_file, r.text))
+			raise RuntimeError(r.status_code)
 
 		logging.info('done uploading %s', self.session_dir)
 
@@ -96,28 +140,37 @@ def network_works():
 	except Exception:
 		return False
 
+		
+lcd = LCDManager()
+lcd.start()
 
 def main():
 	wifi_name = get_wifi_name()
 
+
 	while True:
 		if not network_works():
-			lcd.write('Connecting to\n{}'.format(wifi_name))
+			lcd.write('Connecting to {} '.format(wifi_name), 0)
 			time.sleep(1)
 			continue
 
-		lcd.write('Connected to\n{}'.format(wifi_name))
+		lcd.write('Connected {} (127.0.0.1) '.format(wifi_name), 0)
+		lcd.write('User: {} '.format(username), 1)
 
 		for f in os.listdir(waiting_to_upload_dir):
 			try:
-				lcd.write('Uploading\n{}'.format(f))
+				lcd.write('Uploading: {} '.format(f), 1)
 				Task(os.path.join(waiting_to_upload_dir, f)).handle()
-				lcd.write('Uploaded\n{}'.format(f))
-			except Exception:
+				lcd.write('Uploaded: {} '.format(f), 1)
+			except Exception as e:
 				logging.exception('error uploading session')
-				lcd.write('Error uploading\n{}'.format(f))
+				lcd.write('Uploading failed: {} '.format(e), 1)
+				time.sleep(10)
 
 		time.sleep(1)
 
 if __name__ == '__main__':
-	main()
+	try:
+		main()
+	except KeyboardInterrupt:
+		sys.exit(0)
