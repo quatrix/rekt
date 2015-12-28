@@ -21,6 +21,7 @@ done_dir = '/rec/to_upload'
 
 
 hold_time = 1.2 #seconds
+min_file_size = 300000 # bytes
 
 class Recorder(object):
 	def __init__(self):
@@ -49,7 +50,6 @@ class Recorder(object):
 		t0 = time.time()
 
 		while GPIO.input(channel):
-			print('holding...')
 			self.last_pedal_press = time.time()
 			
 			if self.last_pedal_press - t0 > hold_time:
@@ -94,6 +94,7 @@ class Recorder(object):
 		session = time.strftime("%d_%m_%y_%H_%M_%S", time.gmtime(self.session_start_time))
 		self.session_dir = os.path.join(temp_dir, session)
 		self.session_dir_done = os.path.join(done_dir, session)
+		self.session_file = os.path.join(self.session_dir, 'session.mp3')
 		os.mkdir(self.session_dir)
 
 	@property
@@ -103,7 +104,7 @@ class Recorder(object):
 	def record_from_mic(self):
 		self.create_session()
 		arecord_args = 'arecord -D plughw:1,0 -f cd -t raw' 
-		lame_args = 'lame -r -h -V 0 - {}'.format(os.path.join(self.session_dir, 'session.mp3'))
+		lame_args = 'lame -r -h -V 0 - {}'.format(self.session_file)
 
 		self.arecord_process = subprocess.Popen(arecord_args.split(), stdout=subprocess.PIPE)
 		self.lame_process = subprocess.Popen(lame_args.split(), stdin=self.arecord_process.stdout)
@@ -122,15 +123,26 @@ class Recorder(object):
 			'markers': self.markers,
 		}
 
+	def get_recorded_file_size(self):
+		return os.path.getsize(self.session_file)
+
+	def delete_session(self):
+		os.unlink(self.session_file)
+		os.rmdir(self.session_dir)
+
 	def stop_recording(self):
 		print('stopping recording')
 		self.arecord_process.terminate()
 		self.lame_process.terminate()
 
-		with open(os.path.join(self.session_dir, 'metadata.json'), 'w') as f:
-			print(json.dumps(self.metadata, indent=4), file=f)
+		if self.get_recorded_file_size() < min_file_size:
+			print('session too small: {}'.format(self.get_recorded_file_size()))
+			self.delete_session()
+		else:
+			with open(os.path.join(self.session_dir, 'metadata.json'), 'w') as f:
+				print(json.dumps(self.metadata, indent=4), file=f)
 
-		os.rename(self.session_dir, self.session_dir_done)
+			os.rename(self.session_dir, self.session_dir_done)
 
 		self.make_rgb_green()
 
