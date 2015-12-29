@@ -50,7 +50,6 @@ class UploadHandler(BaseHandler):
         try:
             Session.get((Session.username == username) & (Session.session == metadata['session'])).delete_instance()
         except Exception:
-            print("doesn't exist: {}".format(metadata['session']))
             pass
 
         Session(
