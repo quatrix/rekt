@@ -89,11 +89,11 @@ class LCDManager(object):
 
 def scrolling_text(text, chars):
 	while True:
-		if len(text) < chars:
+		if len(text) <= chars:
 			yield text
-
-		yield text[:chars-1]
-		text = text[1:] + text[0]
+		else:
+			yield text[:chars-1]
+			text = text[1:] + text[0]
 
 
 class LCD(object):
@@ -102,6 +102,7 @@ class LCD(object):
 		self.chars = chars
 		self.lines = [None for _ in xrange(lines)]
 		self._lines_text = [None for _ in xrange(lines)]
+		self._cache = [None for _ in xrange(lines)]
 
 	def set(self, text, line):
 		if self._lines_text[line] == text:
@@ -114,14 +115,16 @@ class LCD(object):
 		self.lcd.lcd_display_string(' '*self.chars, line+1)
 
 	def write_to_lcd(self, text, line):
-		self.lcd.lcd_display_string(text, line+1)
+		if self._cache[line] != text:
+			self.clear_line(line)
+			self.lcd.lcd_display_string(text, line+1)
+			self._cache[line] = text
 
 	def update(self):
 		for line, generator in enumerate(self.lines):
 			if generator is None:
 				continue
 
-			self.clear_line(line)
 			self.write_to_lcd(next(generator), line)
 
 
