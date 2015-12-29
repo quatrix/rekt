@@ -39,9 +39,6 @@ class UploadHandler(BaseHandler):
         if not os.path.exists(session_dir):
             os.mkdir(session_dir)
 
-
-        print(self.request.files.keys())
-
         session_file = self.request.files['files[session]'][0]
         metadata_file = self.request.files['files[metadata]'][0]
         metadata = json.loads(metadata_file['body'])
@@ -99,13 +96,16 @@ class SliceHandler(BaseHandler):
 
 
 def main():
-    application = tornado.web.Application([
+    app = tornado.web.Application([
         (r"/upload/(.+)", UploadHandler),
         (r"/sessions/([^/]+)(?:/([0-9]+))?", SessionHandler),
         (r"/slices/(.+)/([0-9]+)", SliceHandler),
-    ], debug=True)
+    ], debug=True, max_buffer_size=50000000)
 
-    application.listen(55666)
+    tornado.log.enable_pretty_logging()
+
+    server = tornado.httpserver.HTTPServer(app, max_buffer_size=1024*1024*500)
+    server.listen(55666)
     tornado.ioloop.IOLoop.instance().start()
 
 if __name__ == "__main__":
