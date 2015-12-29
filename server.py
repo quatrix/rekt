@@ -74,7 +74,7 @@ class SessionHandler(BaseHandler):
             'id': session.id,
             'createdDate': session.session,
             'markers': [float(marker) for marker in session.markers.split(',') if marker],
-            'slices': [[float(s) for s in sls.split(',')] for sls in session.slices.split('|') if sls],
+            'slices': [{'start': sls.split(',')[0], 'end': sls.split(',')[1]} for sls in session.slices.split('|') if sls],
             'audioUrl': 'http://edisdead.com/rekt/uploads/{}/{}.mp3'.format(username, session.session),
         } for session in sessions]
 
