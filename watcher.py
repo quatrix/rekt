@@ -11,7 +11,7 @@ import RPi_I2C_driver
 import socket
 import fcntl
 import struct
-
+from poster.encode import multipart_encode
 
 from Queue import Queue, Empty
 from threading import Thread, Event
@@ -23,6 +23,24 @@ waiting_to_upload_dir = '/rec/to_upload/'
 done_dir = '/rec/done'
 username = open('/rec/config/username').read().strip()
 
+
+class IterableToFileAdapter(object):
+    def __init__(self, iterable):
+        self.iterator = iter(iterable)
+        self.length = iterable.total
+
+    def read(self, size=-1):
+        return next(self.iterator, b'')
+
+    def __len__(self):
+        return self.length
+
+
+def multipart_encode_for_requests(params, boundary=None, cb=None):
+    datagen, headers = multipart_encode(params, boundary, cb)
+    return IterableToFileAdapter(datagen), headers
+
+
 def get_ip_address(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     return socket.inet_ntoa(fcntl.ioctl(
@@ -30,6 +48,7 @@ def get_ip_address(ifname):
         0x8915,  # SIOCGIFADDR
         struct.pack('256s', ifname[:15])
     )[20:24])
+
 
 class LCDManager(object):
 	def __init__(self):
@@ -77,14 +96,12 @@ def scrolling_text(text, chars):
 		text = text[1:] + text[0]
 
 
-
 class LCD(object):
 	def __init__(self, chars=16, lines=2):
 		self.lcd = RPi_I2C_driver.lcd()
 		self.chars = chars
 		self.lines = [None for _ in xrange(lines)]
 		self._lines_text = [None for _ in xrange(lines)]
-
 
 	def set(self, text, line):
 		if self._lines_text[line] == text:
@@ -117,10 +134,10 @@ class Task(object):
 
 	def check_sanity(self):
 		if not os.path.exists(self.session_file):
-			raise RuntimeError('{} - session file missing'.format(self.session_file))
+			raise RuntimeError('session file missing')
 
 		if not os.path.exists(self.metadata_file):
-			raise RuntimeError('{} - metadata file missing'.format(self.metadata_file))
+			raise RuntimeError('metadata file missing')
 
 	def handle(self):
 		self.check_sanity()
@@ -128,17 +145,23 @@ class Task(object):
 		self.move_to_done()
 
 	def upload_session(self):
+		def progress(param, current, total):
+			if not param:
+				return
+
+			lcd.write('Upload: {0:.1f}%'.format(float(current)/float(total)*100), 1)
+
 		url = 'http://edisdead.com:55666/upload/{}/'.format(username)
 
-		multiple_files = [
-			('files[session]', ('session.mp3', open(self.session_file, 'rb'), 'audio/mpeg')),
-			('files[metadata]', ('metadata.json', open(self.metadata_file, 'rb'), 'application/json'))
-		]
+		datagen, headers = multipart_encode_for_requests({
+			'files[session]': open(self.session_file, 'rb'),
+			'files[metadata]': open(self.metadata_file, 'rb'),
+		}, cb=progress)
 
-		r = requests.post(url, files=multiple_files)
+		r = requests.post(url, data=datagen, headers=headers)
 
 		if r.status_code != 200:
-			raise RuntimeError(r.status_code)
+			raise RuntimeError('({}): {}'.format(r.status_code, r.text))
 
 		logging.info('done uploading %s', self.session_dir)
 
@@ -183,12 +206,12 @@ def main():
 
 		for f in os.listdir(waiting_to_upload_dir):
 			try:
-				lcd.write('Uploading: {} '.format(f), 1)
+				lcd.write(f, 0)
 				Task(os.path.join(waiting_to_upload_dir, f)).handle()
-				lcd.write('Uploaded: {} '.format(f), 1)
+				lcd.write("Upload: Done!", 1)
 			except Exception as e:
 				logging.exception('error uploading session')
-				lcd.write('Uploading failed: {} '.format(e), 1)
+				lcd.write('Error: {}'.format(e), 1)
 				time.sleep(10)
 
 		time.sleep(1)
