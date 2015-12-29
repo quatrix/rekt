@@ -8,9 +8,13 @@ import time
 import sys
 import logging
 import RPi_I2C_driver
+import socket
+import fcntl
+import struct
+
 
 from Queue import Queue, Empty
-from threading import Thread
+from threading import Thread, Event
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -19,13 +23,26 @@ waiting_to_upload_dir = '/rec/to_upload/'
 done_dir = '/rec/done'
 username = open('/rec/config/username').read().strip()
 
+def get_ip_address(ifname):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return socket.inet_ntoa(fcntl.ioctl(
+        s.fileno(),
+        0x8915,  # SIOCGIFADDR
+        struct.pack('256s', ifname[:15])
+    )[20:24])
+
 class LCDManager(object):
 	def __init__(self):
 		self.q = Queue()
 		self.lcd = LCD()
+		self.time_of_last_update = 0;
+		self._stop = Event()
 
 	def run(self):
 		while True:
+			if self._stop.isSet():
+				return
+
 			try:
 				command = self.q.get_nowait()
 				msg, line = command
@@ -33,16 +50,22 @@ class LCDManager(object):
 			except Empty:
 				pass
 
-			self.lcd.update()
-			time.sleep(0.7)
+			if time.time() - self.time_of_last_update > 0.7:
+				self.lcd.update()
+				self.time_of_last_update = time.time()
 
+			time.sleep(0.01)
 
 	def write(self, msg, line):
 		self.q.put((msg ,line))
 
 	def start(self):
-		Thread(target=self.run, args=()).start()
+		self._t = Thread(target=self.run, args=())
+		self._t.start()
 
+	def stop(self):
+		self._stop.set()
+		return self._t.join()
 
 
 def scrolling_text(text, chars):
@@ -134,12 +157,14 @@ def get_wifi_name():
 
 
 
-def network_works():
+def is_connected():
 	try:
 		return requests.get('http://edisdead.com').status_code == 200
 	except Exception:
 		return False
 
+def get_local_ip():
+	return get_ip_address('wlan0')
 		
 lcd = LCDManager()
 lcd.start()
@@ -147,14 +172,13 @@ lcd.start()
 def main():
 	wifi_name = get_wifi_name()
 
-
 	while True:
-		if not network_works():
+		if not is_connected():
 			lcd.write('Connecting to {} '.format(wifi_name), 0)
 			time.sleep(1)
 			continue
 
-		lcd.write('Connected {} (127.0.0.1) '.format(wifi_name), 0)
+		lcd.write('Connected {} ({}) '.format(wifi_name, get_local_ip()), 0)
 		lcd.write('User: {} '.format(username), 1)
 
 		for f in os.listdir(waiting_to_upload_dir):
@@ -172,5 +196,6 @@ def main():
 if __name__ == '__main__':
 	try:
 		main()
-	except KeyboardInterrupt:
+	except KeyboardInterrupt, SystemExit:
+		lcd.stop()
 		sys.exit(0)
