@@ -154,7 +154,7 @@ class Task(object):
 
 			lcd.write('Upload: {0:.1f}%'.format(float(current)/float(total)*100), 1)
 
-		url = 'http://edisdead.com:55666/upload/{}/'.format(username)
+		url = 'http://edisdead.com:55666/upload/{}'.format(username)
 
 		datagen, headers = multipart_encode_for_requests({
 			'files[session]': open(self.session_file, 'rb'),
