@@ -2,11 +2,13 @@
 
 from __future__ import print_function
 
+from threading import Thread, Event
 import RPi.GPIO as GPIO
 import subprocess
 import json
 import time
 import os
+import re
 
 pedal = 18
 
@@ -16,12 +18,30 @@ led_green = 21
 
 led_rgb = [led_red, led_blue, led_green]
 
+led_peak = 26
+
 temp_dir = '/rec/temp'
 done_dir = '/rec/to_upload'
 
 
 hold_time = 1.2 #seconds
 min_file_size = 300000 # bytes
+
+peak_meter_re = re.compile(r'\| (\d\d)\%')
+
+
+
+prev_buffer = ['']
+
+def get_peak_vu_meter(pipe):
+		d = pipe.read(50)
+		print(prev_buffer[0] + d)
+		r = peak_meter_re.search(prev_buffer[0] + d)
+		prev_buffer[0] = d
+
+		if r:
+			return r.group(1)
+
 
 class Recorder(object):
 	def __init__(self):
@@ -33,6 +53,7 @@ class Recorder(object):
 		GPIO.setmode(GPIO.BCM)
 		GPIO.setup(pedal, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 		GPIO.setup(led_rgb, GPIO.OUT)
+		GPIO.setup(led_peak, GPIO.OUT)
 		GPIO.add_event_detect(pedal, GPIO.RISING, callback=self.on_pedal_change, bouncetime=50)
 		self.make_rgb_green()
 
@@ -103,12 +124,44 @@ class Recorder(object):
 
 	def record_from_mic(self):
 		self.create_session()
-		arecord_args = 'arecord -D plughw:1,0 -f cd -t raw' 
+		arecord_args = 'arecord -vv -D plughw:1,0 -f cd -t raw' 
 		lame_args = 'lame -r -h -V 0 - {}'.format(self.session_file)
 
-		self.arecord_process = subprocess.Popen(arecord_args.split(), stdout=subprocess.PIPE)
+		self.arecord_process = subprocess.Popen(
+			arecord_args.split(),
+			stdout=subprocess.PIPE,
+			stderr=subprocess.PIPE,
+		)
+
 		self.lame_process = subprocess.Popen(lame_args.split(), stdin=self.arecord_process.stdout)
 
+		self.start_rec_monitor()
+
+	def start_rec_monitor(self):
+		print("starting")
+		self._monitor_stop = Event()
+		self._monitor_thread = Thread(target=self.rec_monitor, args=())
+		self._monitor_thread.start()
+
+	def rec_monitor(self):
+		print("in rec monitor")
+		while True:
+			if self._monitor_stop.isSet():
+				GPIO.output(led_peak, 0)
+				return
+
+			v = get_peak_vu_meter(self.arecord_process.stderr)
+
+			print('peak: {}'.format(v))
+
+			if v is not None and int(v) > 95:
+				GPIO.output(led_peak, 1)
+			else:
+				GPIO.output(led_peak, 0)
+
+	def stop_rec_monitor(self):
+		self._monitor_stop.set()
+		self._monitor_thread.join()
 
 	def start_recording(self):
 		print('starting recording')
@@ -132,6 +185,7 @@ class Recorder(object):
 
 	def stop_recording(self):
 		print('stopping recording')
+		self.stop_rec_monitor()
 		self.arecord_process.terminate()
 		self.lame_process.terminate()
 
