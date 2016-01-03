@@ -9,6 +9,8 @@ db = SqliteDatabase('sessions.db')
 class Session(Model):
     id = PrimaryKeyField()
     username = CharField()
+    name = CharField()
+    tags = CharField()
     session = DateField()
     markers = CharField()
     slices = CharField()
@@ -57,6 +59,8 @@ class UploadHandler(BaseHandler):
             session=metadata['session'],
             markers=','.join((str(marker) for marker in metadata['markers'])),
             slices='',
+            name='',
+            tags='',
         ).save()
 
         self.finish('done')
@@ -75,6 +79,8 @@ class SessionHandler(BaseHandler):
             'markers': [float(marker) for marker in session.markers.split(',') if marker],
             'slices': [{'start': sls.split(',')[0], 'end': sls.split(',')[1]} for sls in session.slices.split('|') if sls],
             'audioUrl': 'http://edisdead.com/rekt/uploads/{}/{}.mp3'.format(username, session.session),
+            'tags': [tag for tag in session.tags.split(',') if tag],
+            'name': session.name or session.session,
         } for session in sessions]
 
 
@@ -94,11 +100,30 @@ class SliceHandler(BaseHandler):
         self.finish({'status': 'ok'})
 
 
+class TagsHandler(BaseHandler):
+    def put(self, username, id):
+        req = json.loads(self.request.body)
+
+        tags = ','.join(req['tags'])
+
+        Session.update(tags = tags).where((Session.username == username) & (Session.id == id)).execute()
+        self.finish({'status': 'ok'})
+
+
+class NameHandler(BaseHandler):
+    def put(self, username, id):
+        req = json.loads(self.request.body)
+        Session.update(name = req['name']).where((Session.username == username) & (Session.id == id)).execute()
+        self.finish({'status': 'ok'})
+
+
 def main():
     app = tornado.web.Application([
         (r"/upload/(.+)", UploadHandler),
         (r"/sessions/([^/]+)(?:/([0-9]+))?", SessionHandler),
         (r"/slices/(.+)/([0-9]+)", SliceHandler),
+        (r"/tags/(.+)/([0-9]+)", TagsHandler),
+        (r"/name/(.+)/([0-9]+)", NameHandler),
     ], debug=True, max_buffer_size=50000000)
 
     tornado.log.enable_pretty_logging()
