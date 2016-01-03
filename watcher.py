@@ -7,10 +7,10 @@ import requests
 import time
 import sys
 import logging
-import RPi_I2C_driver
 import socket
 import fcntl
 import struct
+import click
 from poster.encode import multipart_encode
 
 from Queue import Queue, Empty
@@ -18,10 +18,6 @@ from threading import Thread, Event
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-
-waiting_to_upload_dir = '/rec/to_upload/'
-done_dir = '/rec/done'
-username = open('/rec/config/username').read().strip()
 
 
 class IterableToFileAdapter(object):
@@ -49,6 +45,16 @@ def get_ip_address(ifname):
         struct.pack('256s', ifname[:15])
     )[20:24])
 
+
+class FakeLCDManager(object):
+	def write(self, msg, line):
+		print(msg, line)
+
+	def start(self):
+		pass
+
+	def stop(self):
+		pass
 
 class LCDManager(object):
 	def __init__(self):
@@ -98,6 +104,8 @@ def scrolling_text(text, chars):
 
 class LCD(object):
 	def __init__(self, chars=16, lines=2):
+		import RPi_I2C_driver
+
 		self.lcd = RPi_I2C_driver.lcd()
 		self.chars = chars
 		self.lines = [None for _ in xrange(lines)]
@@ -129,11 +137,12 @@ class LCD(object):
 
 
 class Task(object):
-	def __init__(self, session_dir):
+	def __init__(self, session_dir, lcd):
 		logging.info('working on %s', session_dir)
 		self.session_dir = session_dir
 		self.session_file = os.path.join(session_dir, 'session.mp3')
 		self.metadata_file = os.path.join(session_dir, 'metadata.json')
+		self.lcd = lcd
 
 	def check_sanity(self):
 		if not os.path.exists(self.session_file):
@@ -152,7 +161,7 @@ class Task(object):
 			if not param:
 				return
 
-			lcd.write('Upload: {0:.1f}%'.format(float(current)/float(total)*100), 1)
+			self.lcd.write('Upload: {0:.1f}%'.format(float(current)/float(total)*100), 1)
 
 		url = 'http://edisdead.com:55666/upload/{}'.format(username)
 
@@ -174,8 +183,8 @@ class Task(object):
 
 wifi_re = re.compile(r'\s+wpa-ssid \"(.+)\"')
 
-def get_wifi_name():
-	for l in open('/rec/config/wifi').readlines():
+def get_wifi_name(work_dir):
+	for l in open(os.path.join(work_dir, 'config/wifi')).readlines():
 		r = wifi_re.search(l)
 
 		if r:
@@ -189,39 +198,58 @@ def is_connected():
 	except Exception:
 		return False
 
-def get_local_ip():
+def get_local_ip(no_pi):
+	if no_pi:
+		return "127.0.0.1"
+
 	return get_ip_address('wlan0')
 		
-lcd = LCDManager()
-lcd.start()
 
-def main():
-	wifi_name = get_wifi_name()
+def get_username(work_dir):
+	return open(os.path.join(work_dir, 'config/username')).read().strip()
 
-	while True:
-		if not is_connected():
-			lcd.write('Connecting to {} '.format(wifi_name), 0)
-			time.sleep(1)
-			continue
 
-		lcd.write('Connected {} ({}) '.format(wifi_name, get_local_ip()), 0)
-		lcd.write('User: {} '.format(username), 1)
+@click.command()
+@click.option('--work-dir', default='/rec', help='work dir to watch')
+@click.option('--no-pi', is_flag=True, default=False, help='not on raspberry pi?')
+def main(work_dir, no_pi):
+	wifi_name = get_wifi_name(work_dir)
 
-		for f in os.listdir(waiting_to_upload_dir):
-			try:
-				lcd.write(f, 0)
-				Task(os.path.join(waiting_to_upload_dir, f)).handle()
-				lcd.write("Upload: Done!", 1)
-			except Exception as e:
-				logging.exception('error uploading session')
-				lcd.write('Error: {}'.format(e), 1)
-				time.sleep(10)
+	waiting_to_upload_dir = os.path.join(work_dir, 'to_upload')
+	done_dir = os.path.join(work_dir, 'done')
+	username = get_username(work_dir)
 
-		time.sleep(1)
+	if no_pi:
+		lcd = FakeLCDManager()
+	else:
+		lcd = LCDManager()
 
-if __name__ == '__main__':
+	lcd.start()
+
 	try:
-		main()
+		while True:
+			if not is_connected():
+				lcd.write('Connecting to {} '.format(wifi_name), 0)
+				time.sleep(1)
+				continue
+
+			lcd.write('Connected {} ({}) '.format(wifi_name, get_local_ip(no_pi)), 0)
+			lcd.write('User: {} '.format(username), 1)
+
+			for f in os.listdir(waiting_to_upload_dir):
+				try:
+					lcd.write(f, 0)
+					Task(os.path.join(waiting_to_upload_dir, f), lcd).handle()
+					lcd.write("Upload: Done!", 1)
+				except Exception as e:
+					logging.exception('error uploading session')
+					lcd.write('Error: {}'.format(e), 1)
+					time.sleep(10)
+
+			time.sleep(1)
 	except KeyboardInterrupt, SystemExit:
 		lcd.stop()
 		sys.exit(0)
+
+if __name__ == '__main__':
+	main()
