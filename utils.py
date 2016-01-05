@@ -1,8 +1,29 @@
 import re
 import os
 import flock
+import logging
+import requests
+import socket
+import fcntl
+import struct
 
 wifi_re = re.compile(r'\s+wpa-ssid \"(.+)\"')
+
+
+def is_locked(filename):
+	return os.path.exists(os.path.join('/var/lock', os.path.basename(filename)))
+
+
+def lock_file(filename):
+	open(os.path.join('/var/lock', os.path.basename(filename)), 'w')
+
+
+def unlock_file(filename):
+	lockfile = os.path.join('/var/lock', os.path.basename(filename))
+
+	if os.path.exists(lockfile):
+		os.unlink(lockfile)
+
 
 def iterfile(filename, offset):
 	with open(filename, 'rb') as f:
@@ -17,11 +38,10 @@ def iterfile(filename, offset):
 			else:
 				f.seek(where)
 
-				try:
-					with flock.Flock(f, flock.LOCK_EX | flock.LOCK_NB):
-						break
-				except IOError:
-					pass
+				if not is_locked(filename):
+					logging.info('%s not locked, done reading')
+					break
+			
 
 
 def get_wifi_name(work_dir):
@@ -36,7 +56,9 @@ def is_connected():
 	try:
 		return requests.get('http://edisdead.com').status_code == 200
 	except Exception:
+		logging.exception('is connected')
 		return False
+
 
 
 def get_local_ip():

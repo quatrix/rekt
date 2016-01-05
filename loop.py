@@ -3,8 +3,11 @@
 from __future__ import print_function
 
 from threading import Thread, Event
+from utils import lock_file, unlock_file, get_username
+
 import RPi.GPIO as GPIO
 import subprocess
+import requests
 import json
 import time
 import os
@@ -20,8 +23,8 @@ led_rgb = [led_red, led_blue, led_green]
 
 led_peak = 26
 
-temp_dir = '/rec/temp'
-done_dir = '/rec/to_upload'
+work_dir = '/rec'
+upload_dir = '/rec/to_upload'
 
 
 hold_time = 1.2 #seconds
@@ -35,7 +38,6 @@ prev_buffer = ['']
 
 def get_peak_vu_meter(pipe):
 		d = pipe.read(50)
-		print(prev_buffer[0] + d)
 		r = peak_meter_re.search(prev_buffer[0] + d)
 		prev_buffer[0] = d
 
@@ -48,6 +50,9 @@ class Recorder(object):
 		self.recording = False
 		self.setup_hardware()
 		self.last_pedal_press = None
+
+	def __del__(self):
+		unlock_file(self.session_file)
 
 	def setup_hardware(self):
 		GPIO.setmode(GPIO.BCM)
@@ -112,11 +117,11 @@ class Recorder(object):
 
 	def create_session(self):
 		self.session_start_time = int(time.time())
-		session = time.strftime("%d_%m_%y_%H_%M_%S", time.gmtime(self.session_start_time))
-		self.session_dir = os.path.join(temp_dir, session)
-		self.session_dir_done = os.path.join(done_dir, session)
-		self.session_file = os.path.join(self.session_dir, 'session.mp3')
-		os.mkdir(self.session_dir)
+		self.session_file = os.path.join(upload_dir, '{}.mp3'.format(self.session_start_time))
+		self.metadata_file = os.path.join(upload_dir, '{}.json'.format(self.session_start_time))
+
+		lock_file(self.session_file)
+		
 
 	@property
 	def time_since_session_started(self):
@@ -125,7 +130,7 @@ class Recorder(object):
 	def record_from_mic(self):
 		self.create_session()
 		arecord_args = 'arecord -vv -D plughw:1,0 -f cd -t raw' 
-		lame_args = 'lame --cbr -b 128 - {}'.format(self.session_file)
+		lame_args = 'lame -r -h --cbr -b 128 - {}'.format(self.session_file)
 
 		self.arecord_process = subprocess.Popen(
 			arecord_args.split(),
@@ -138,21 +143,17 @@ class Recorder(object):
 		self.start_rec_monitor()
 
 	def start_rec_monitor(self):
-		print("starting")
 		self._monitor_stop = Event()
 		self._monitor_thread = Thread(target=self.rec_monitor, args=())
 		self._monitor_thread.start()
 
 	def rec_monitor(self):
-		print("in rec monitor")
 		while True:
 			if self._monitor_stop.isSet():
 				GPIO.output(led_peak, 0)
 				return
 
 			v = get_peak_vu_meter(self.arecord_process.stderr)
-
-			print('peak: {}'.format(v))
 
 			if v is not None and int(v) > 95:
 				GPIO.output(led_peak, 1)
@@ -163,25 +164,41 @@ class Recorder(object):
 		self._monitor_stop.set()
 		self._monitor_thread.join()
 
+	@property
+	def metadata(self):
+		return {
+			'markers': self.markers,
+		}
+
+	def post_metadata_to_server(self):
+		base_url = 'http://edisdead.com:55666'
+		url = '{}/sessions/{}/{}'.format(base_url, get_username(work_dir), self.session_start_time)
+
+		try:
+			requests.put(url, data=json.dumps(self.metadata))
+		except Exception:
+			logging.exception('post metdata to server')
+
+
+	def write_metadata_file(self):
+		filename = self.metadata_file + '.tmp'
+
+		with open(filename, 'w') as f:
+			print(json.dumps(self.metadata, indent=4), file=f)
+
+		os.rename(filename, self.metadata_file)
+
+		self.post_metadata_to_server()
+		
+
+
+
 	def start_recording(self):
 		print('starting recording')
 		self.markers = []
 		self.record_from_mic()
 		self.make_rgb_red()
-
-	@property
-	def metadata(self):
-		return {
-			'session': self.session_start_time,
-			'markers': self.markers,
-		}
-
-	def get_recorded_file_size(self):
-		return os.path.getsize(self.session_file)
-
-	def delete_session(self):
-		os.unlink(self.session_file)
-		os.rmdir(self.session_dir)
+		self.write_metadata_file()
 
 	def stop_recording(self):
 		print('stopping recording')
@@ -189,16 +206,9 @@ class Recorder(object):
 		self.arecord_process.terminate()
 		self.lame_process.terminate()
 
-		if self.get_recorded_file_size() < min_file_size:
-			print('session too small: {}'.format(self.get_recorded_file_size()))
-			self.delete_session()
-		else:
-			with open(os.path.join(self.session_dir, 'metadata.json'), 'w') as f:
-				print(json.dumps(self.metadata, indent=4), file=f)
-
-			os.rename(self.session_dir, self.session_dir_done)
-
+		self.write_metadata_file()
 		self.make_rgb_green()
+		unlock_file(self.session_file)
 
 	def set_mark(self):
 		print('setting mark')
@@ -207,6 +217,7 @@ class Recorder(object):
 		self.make_rgb_purple()
 		time.sleep(0.2)
 		self.make_rgb_red()
+		self.write_metadata_file()
 
 	def read_pedal(self):
 		return GPIO.input(pedal)

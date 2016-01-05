@@ -6,13 +6,8 @@ import requests
 import time
 import sys
 import logging
-import socket
-import fcntl
-import struct
 import click
 
-from Queue import Queue, Empty
-from threading import Thread, Event
 from utils import *
 from lcd import FakeLCDManager, LCDManager
 
@@ -37,6 +32,7 @@ class WatchDir(object):
 			
 		offset = int(r.text)
 
+		logging.info('doing post')
 		r = requests.post(url, data=iterfile(filepath, offset))
 
 		if r.status_code != 200:
@@ -93,7 +89,7 @@ class Watcher(object):
 
 	def wait_for_wifi(self):
 		while not is_connected():
-			self.lcd.write('Connecting to {} '.format(wifi_name), 0)
+			self.lcd.write('Connecting to {} '.format(self.wifi_name), 0)
 			time.sleep(1)
 
 		self.lcd.write('Connected {} ({}) '.format(self.wifi_name, get_local_ip()), 0)
@@ -101,7 +97,7 @@ class Watcher(object):
 
 	def watch(self):
 		while True:
-			#self.wait_for_wifi()
+			self.wait_for_wifi()
 
 			WatchDir(
 				self.watch_dir,

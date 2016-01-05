@@ -1,4 +1,7 @@
 from utils import scrolling_text
+from Queue import Queue, Empty
+from threading import Thread, Event
+import time
 
 class FakeLCDManager(object):
 	def write(self, msg, line):
