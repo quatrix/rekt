@@ -21,6 +21,8 @@ class UploadHandler(BaseHandler):
         self.upload_path = os.path.join(options.upload_dir, username, session_id + '.mp3')
 
         if self.request.method == "POST":
+            logging.info('hey')
+                    
             self.__class__._waiting_to_finish[self.upload_path] = Condition()
             upload_dir = os.path.join(options.upload_dir, username)
 
@@ -77,4 +79,5 @@ class UploadHandler(BaseHandler):
         except OSError:
             size = 0
 
+        logging.info('upload.get offset: %d', size)
         self.finish(str(size))

@@ -22,8 +22,8 @@ define('server_delay', default=0.5)
 define('upload_dir', default='/usr/share/nginx/html/rekt/uploads')
 
 
-def create_stream_url(username, id):
-    return 'http:///stream/{}/{}.mp3'.format(username, id)
+def create_audio_url(username, id):
+    return 'http://edisdead.com/rekt/uploads/{}/{}.mp3'.format(username, id)
 
 
 class SessionHandler(BaseHandler):
@@ -43,7 +43,7 @@ class SessionHandler(BaseHandler):
 
         for i in res:
             del i['_id']
-            i['stream'] = create_stream_url(username, i['id'])
+            i['audioUrl'] = create_audio_url(username, i['id'])
 
         self.finish({'res': res})
 
