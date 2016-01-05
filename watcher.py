@@ -43,9 +43,9 @@ class WatchDir(object):
 			raise RuntimeError('({}): {}'.format(r.status_code, r.text))
 		
 	def handle_json(self, session_id, filepath):
-		url = '{}/update_session/{}/{}'.format(self.base_url, self.username, session_id)
+		url = '{}/sessions/{}/{}'.format(self.base_url, self.username, session_id)
 
-		r = requests.post(url, data=open(filepath).read())
+		r = requests.put(url, data=open(filepath).read())
 
 		if r.status_code != 200:
 			raise RuntimeError('({}): {}'.format(r.status_code, r.text))
