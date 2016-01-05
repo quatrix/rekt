@@ -125,7 +125,7 @@ class Recorder(object):
 	def record_from_mic(self):
 		self.create_session()
 		arecord_args = 'arecord -vv -D plughw:1,0 -f cd -t raw' 
-		lame_args = 'lame -r -h -V 0 - {}'.format(self.session_file)
+		lame_args = 'lame --cbr -b 128 - {}'.format(self.session_file)
 
 		self.arecord_process = subprocess.Popen(
 			arecord_args.split(),

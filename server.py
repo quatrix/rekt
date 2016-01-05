@@ -1,136 +1,107 @@
-import tornado.httpserver, tornado.ioloop, tornado.options, tornado.web, os.path, random, string
-from tornado.options import define, options
+from tornado.web import Application
+from tornado import gen
+from tornado.httpserver import HTTPServer
+from tornado.ioloop import IOLoop
+from tornado.log import enable_pretty_logging
+from tornado.options import parse_command_line, define, options
+from base_handler import BaseHandler
+from upload_handler import UploadHandler
+from stream_handler import StreamHandler
+
+
+import motor
+import click
+import logging
 import json
-
-from peewee import *
-
-db = SqliteDatabase('sessions.db')
-
-class Session(Model):
-    id = PrimaryKeyField()
-    username = CharField()
-    name = CharField()
-    tags = CharField()
-    session = DateField()
-    markers = CharField()
-    slices = CharField()
-
-    class Meta:
-        database = db
-
-upload_dir = '/usr/share/nginx/html/rekt/uploads'
+import os
 
 
-db.connect()
-db.create_tables([Session], True)
+define('port', default=55666)
+define('debug', default=True)
+define('server_delay', default=0.5)
+define('upload_dir', default='/usr/share/nginx/html/rekt/uploads')
 
-class BaseHandler(tornado.web.RequestHandler):
-    def set_default_headers(self):
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-        self.set_header("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, X-Requested-By, If-Modified-Since, X-File-Name, Cache-Control")
 
-    def options(self, *args, **kwargs):
-        self.finish()
-            
-
-class UploadHandler(BaseHandler):
-    def post(self, username):
-        session_dir = os.path.join(upload_dir, username)
-
-        if not os.path.exists(session_dir):
-            os.mkdir(session_dir)
-
-        session_file = self.request.files['files[session]'][0]
-        metadata_file = self.request.files['files[metadata]'][0]
-        metadata = json.loads(metadata_file['body'])
-
-        with open(os.path.join(session_dir, '{}.mp3'.format(metadata['session'])), 'wb') as f:
-            f.write(session_file['body'])
-
-        # FIXME do a proper insert or update
-        try:
-            Session.get((Session.username == username) & (Session.session == metadata['session'])).delete_instance()
-        except Exception:
-            pass
-
-        Session(
-            username=username,
-            session=metadata['session'],
-            markers=','.join((str(marker) for marker in metadata['markers'])),
-            slices='',
-            name='',
-            tags='',
-        ).save()
-
-        self.finish('done')
+def create_stream_url(username, id):
+    return 'http:///stream/{}/{}.mp3'.format(username, id)
 
 
 class SessionHandler(BaseHandler):
+    @gen.coroutine
     def get(self, username, id):
+        coll = self.settings['db'].sessions
+
         if id:
-            sessions = Session.select().where((Session.username == username) & (Session.id == id))
-        else:
-            sessions = Session.select().where(Session.username == username)
+            cursor = coll.find({
+                'username': username,
+                'id': id,
+            })
+        else: 
+            cursor = coll.find({'username': username}).sort('id')
 
-        res = [{
-            'id': session.id,
-            'createdDate': session.session,
-            'markers': [float(marker) for marker in session.markers.split(',') if marker],
-            'slices': [{'start': sls.split(',')[0], 'end': sls.split(',')[1]} for sls in session.slices.split('|') if sls],
-            'audioUrl': 'http://edisdead.com/rekt/uploads/{}/{}.mp3'.format(username, session.session),
-            'tags': [tag for tag in session.tags.split(',') if tag],
-            'name': session.name or session.session,
-        } for session in sessions]
+        res = (yield cursor.to_list(None))
 
+        for i in res:
+            del i['_id']
+            i['stream'] = create_stream_url(username, i['id'])
 
         self.finish({'res': res})
 
+    @gen.coroutine
+    def put(self, username, id):
+        logging.info('updating for %s (%s)', username, id)
+        coll = self.settings['db'].sessions
+
+        req = json.loads(self.request.body)
+
+        d = {
+            'username': username,
+            'id': id,
+        }
+
+        session = yield coll.find_one(d)
+
+        if session is None:
+            logging.info('insert')
+            d.update(req)
+            yield coll.insert(d)
+        elif req:
+            logging.info('update')
+            yield coll.update(d, {'$set': req})
+
+        self.finish({'status': 'ok'})
+
+    @gen.coroutine
     def delete(self, username, id):
-        Session.get((Session.username == username) & (Session.id == id)).delete_instance()
+        logging.info('updating for %s (%s)', username, id)
+        coll = self.settings['db'].sessions
 
+        d = {
+            'username': username,
+            'id': id,
+        }
 
-class SliceHandler(BaseHandler):
-    def put(self, username, id):
-        req = json.loads(self.request.body)
+        yield coll.remove(d)
 
-        slices = '|'.join([','.join([str(start_end['start']), str(start_end['end'])]) for start_end in req['slices']])
-
-        Session.update(slices = slices).where((Session.username == username) & (Session.id == id)).execute()
-        self.finish({'status': 'ok'})
-
-
-class TagsHandler(BaseHandler):
-    def put(self, username, id):
-        req = json.loads(self.request.body)
-
-        tags = ','.join(req['tags'])
-
-        Session.update(tags = tags).where((Session.username == username) & (Session.id == id)).execute()
-        self.finish({'status': 'ok'})
-
-
-class NameHandler(BaseHandler):
-    def put(self, username, id):
-        req = json.loads(self.request.body)
-        Session.update(name = req['name']).where((Session.username == username) & (Session.id == id)).execute()
         self.finish({'status': 'ok'})
 
 
 def main():
-    app = tornado.web.Application([
-        (r"/upload/(.+)", UploadHandler),
+    db = motor.motor_tornado.MotorClient().rekt
+
+    parse_command_line()
+
+    app = Application([
         (r"/sessions/([^/]+)(?:/([0-9]+))?", SessionHandler),
-        (r"/slices/(.+)/([0-9]+)", SliceHandler),
-        (r"/tags/(.+)/([0-9]+)", TagsHandler),
-        (r"/name/(.+)/([0-9]+)", NameHandler),
-    ], debug=True, max_buffer_size=50000000)
+        (r"/upload/(.+)/([0-9]+)", UploadHandler),
+        (r"/stream/(.+)/([0-9]+)", StreamHandler),
+    ], debug=options.debug, db=db)
 
-    tornado.log.enable_pretty_logging()
+    enable_pretty_logging()
 
-    server = tornado.httpserver.HTTPServer(app, max_buffer_size=1024*1024*500)
-    server.listen(55666)
-    tornado.ioloop.IOLoop.instance().start()
+    server = HTTPServer(app, max_buffer_size=1024*1024*500)
+    server.listen(options.port)
+    IOLoop.instance().start()
 
 if __name__ == "__main__":
     main()
