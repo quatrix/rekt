@@ -7,16 +7,18 @@ import time
 import sys
 import logging
 import click
+import signal
 
 from utils import *
 from lcd import FakeLCDManager, LCDManager
+from threading import Event
 from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-
-
 class WatchDir(object):
+    SUPPORTED_EXTS = ['mp3', 'json']
+
     def __init__(self, watch_dir, done_dir, username, base_url, lcd):
         self.watch_dir = watch_dir
         self.done_dir = done_dir
@@ -32,6 +34,7 @@ class WatchDir(object):
         logging.info('upload json %s', filepath)
 
         url = '{}/sessions/{}/{}'.format(self.base_url, self.username, session_id)
+        logging.info('upload json url: %s', url)
 
         r = requests.put(url, data=open(filepath).read())
 
@@ -40,7 +43,9 @@ class WatchDir(object):
 
     def upload_mp3(self, filepath, session_id):
         logging.info('upload mp3 %s', filepath)
+
         url = '{}/upload/{}/{}'.format(self.base_url, self.username, session_id)
+        logging.info('upload mp3 url: %s', url)
 
         r = requests.get(url)
 
@@ -48,6 +53,7 @@ class WatchDir(object):
             raise RuntimeError('({}): {}'.format(r.status_code, r.text))
             
         offset = int(r.text)
+        logging.info('upload mp3 got offset: %d', offset)
 
         r = requests.post(url, data=iterfile(filepath, offset))
 
@@ -55,15 +61,17 @@ class WatchDir(object):
             raise RuntimeError('({}): {}'.format(r.status_code, r.text))
 
     def get_worker(self, ext):
-        if ext == '.mp3':
-            return self._mp3_worker, self.upload_mp3
-        elif ext == '.json':
-            return self._json_worker, self.upload_json
-        else:
-            raise TypeError('unsupported ext {}'.format(ext))
+        worker = getattr(self, '_{}_worker'.format(ext))
+        task =  getattr(self, 'upload_{}'.format(ext))
+
+        return worker, task
 
     def enqueue_file(self, f):
-        session_id, ext = os.path.splitext(f)
+        session_id, ext = get_session_and_ext(f)
+
+        if ext not in self.SUPPORTED_EXTS:
+            return
+
         filepath = os.path.join(self.watch_dir, f)
         donepath = os.path.join(self.done_dir, f)
 
@@ -97,6 +105,11 @@ def init_lcd(no_pi):
     lcd.start()
     return lcd
 
+def suicide():
+    logging.info('commiting suicide, bye')
+    pid = os.getpid()
+    os.kill(pid, signal.SIGTERM)
+
 
 class Watcher(object):
     def __init__(self, work_dir, no_pi, base_url):
@@ -126,13 +139,18 @@ class Watcher(object):
             self.lcd,
         )
 
-        while True:
-            #self.wait_for_wifi()
-            w.enqueue_files()
-            time.sleep(1)
+        try:
+            while True:
+                #self.wait_for_wifi()
+                w.enqueue_files()
+                time.sleep(1)
+        except KeyboardInterrupt:
+            logging.info('shut down the devil sound')
+            suicide()
 
     def __del__(self):
-        self.lcd.stop()
+        if hasattr(self, 'lcd'):
+            self.lcd.stop()
 
 @click.command()
 @click.option('--work-dir', default='/rec', help='watch dir')

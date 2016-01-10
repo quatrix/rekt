@@ -89,8 +89,8 @@ class UploadHandler(BaseHandler):
         return self.upload_path in self.__class__._uploading
 
     def set_being_uploaded(self):
-        self.__class__._uploading |= set([self.upload_path])
+        self.__class__._uploading.add(self.upload_path)
 
     def unset_being_uploaded(self):
-        self.__class__._uploading -= set([self.upload_path])
+        self.__class__._uploading.remove(self.upload_path)
 

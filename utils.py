@@ -1,6 +1,5 @@
 import re
 import os
-import flock
 import logging
 import requests
 import socket
@@ -27,9 +26,10 @@ def iterfile(filename, offset):
                 f.seek(where)
 
                 if _attempts > 5:
+                    logging.info('iterfile %s 0 new bytes after %d attempts, it is done', filename, _attempts)
                     break
                 
-                time.sleep(0.1)
+                time.sleep(1)
                 _attempts += 1 
 
 
@@ -78,3 +78,9 @@ def scrolling_text(text, chars):
         else:
             yield text[:chars-1]
             text = text[1:] + text[0]
+
+
+def get_session_and_ext(f):
+	session_id, ext = os.path.splitext(f)
+
+	return session_id, ext[1:]

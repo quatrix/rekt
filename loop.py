@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 from threading import Thread, Event
-from utils import lock_file, unlock_file, get_username
+from utils import get_username
 
 import RPi.GPIO as GPIO
 import subprocess
+import logging
 import json
 import time
 import os
 import re
+import sys
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 pedal = 18
 
@@ -41,9 +45,6 @@ class Recorder(object):
 		self.setup_hardware()
 		self.last_pedal_press = None
 
-	def __del__(self):
-		unlock_file(self.session_file)
-
 	def setup_hardware(self):
 		GPIO.setmode(GPIO.BCM)
 		GPIO.setup(pedal, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
@@ -61,7 +62,7 @@ class Recorder(object):
 		if self.last_pedal_press is not None and time.time() - self.last_pedal_press < 0.2:
 			return
 
-		print('pedal change', channel)
+		logging.info('pedal change: %d', channel)
 
 		t0 = time.time()
 
@@ -109,9 +110,6 @@ class Recorder(object):
 		self.session_start_time = int(time.time())
 		self.session_file = os.path.join(upload_dir, '{}.mp3'.format(self.session_start_time))
 		self.metadata_file = os.path.join(upload_dir, '{}.json'.format(self.session_start_time))
-
-		lock_file(self.session_file)
-		
 
 	@property
 	def time_since_session_started(self):
@@ -164,27 +162,28 @@ class Recorder(object):
 		filename = self.metadata_file + '.tmp'
 
 		with open(filename, 'w') as f:
-			print(json.dumps(self.metadata, indent=4), file=f)
+			f.write(json.dumps(self.metadata, indent=4))
+
+		os.rename(filename, self.metadata_file)
 
 	def start_recording(self):
-		print('starting recording')
+		logging.info('starting recording')
 		self.markers = []
 		self.record_from_mic()
 		self.make_rgb_red()
 		self.write_metadata_file()
 
 	def stop_recording(self):
-		print('stopping recording')
+		logging.info('stopping recording')
 		self.stop_rec_monitor()
 		self.arecord_process.terminate()
 		self.lame_process.terminate()
 
 		self.write_metadata_file()
 		self.make_rgb_green()
-		unlock_file(self.session_file)
 
 	def set_mark(self):
-		print('setting mark')
+		logging.info('setting mark')
 		self.markers.append(self.time_since_session_started)
 
 		self.make_rgb_purple()
