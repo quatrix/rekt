@@ -1,13 +1,9 @@
 #!/usr/bin/env python
-
-from __future__ import print_function
-
 from threading import Thread, Event
 from utils import lock_file, unlock_file, get_username
 
 import RPi.GPIO as GPIO
 import subprocess
-import requests
 import json
 import time
 import os
@@ -25,14 +21,8 @@ led_peak = 26
 
 work_dir = '/rec'
 upload_dir = '/rec/to_upload'
-
-
 hold_time = 1.2 #seconds
-min_file_size = 300000 # bytes
-
 peak_meter_re = re.compile(r'\| (\d\d)\%')
-
-
 
 prev_buffer = ['']
 
@@ -170,28 +160,11 @@ class Recorder(object):
 			'markers': self.markers,
 		}
 
-	def post_metadata_to_server(self):
-		base_url = 'http://edisdead.com:55666'
-		url = '{}/sessions/{}/{}'.format(base_url, get_username(work_dir), self.session_start_time)
-
-		try:
-			requests.put(url, data=json.dumps(self.metadata))
-		except Exception:
-			logging.exception('post metdata to server')
-
-
 	def write_metadata_file(self):
 		filename = self.metadata_file + '.tmp'
 
 		with open(filename, 'w') as f:
 			print(json.dumps(self.metadata, indent=4), file=f)
-
-		os.rename(filename, self.metadata_file)
-
-		self.post_metadata_to_server()
-		
-
-
 
 	def start_recording(self):
 		print('starting recording')
@@ -225,7 +198,6 @@ class Recorder(object):
 	def serve(self):
 		while True:
 			time.sleep(999)	
-			
 
 
 def main():
