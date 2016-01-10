@@ -84,3 +84,11 @@ def get_session_and_ext(f):
 	session_id, ext = os.path.splitext(f)
 
 	return session_id, ext[1:]
+
+def get_next_id():
+    f = '/opt/rekt/_id'
+
+    _id = int(open(f).read().strip())
+    open(f, 'w').write(str(_id + 1))
+
+    return _id

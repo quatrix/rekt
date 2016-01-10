@@ -16,19 +16,59 @@ from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
+
+class DoneUploading(object):
+    pass
+
+
+class UploadError(object):
+    def __init__(self):
+        self.time = time.time()
+
+    @property
+    def expired(self):
+        return time.time() - self.time > 5
+
+
+class UploadTracker(object):
+    def __init__(self):
+        self._state = {}
+
+    def set_done(self, key):
+        self._state.pop(key)
+
+    def set_error(self, key):
+        self._state[key] = UploadError()
+
+    def set_uploading(self, key):
+        if key not in self._state:
+            self._state[key] = True
+
+    def get_state(self):
+        res = []
+
+        for k, v in self._state.iteritems():
+            if isinstance(v, UploadError) and not v.expired:
+                res.append('{}: Error'.format(k))
+            else:
+                res.append(('{}: Uploading'.format(k)))
+
+        return res
+
+
 class WatchDir(object):
     SUPPORTED_EXTS = ['mp3', 'json']
 
-    def __init__(self, watch_dir, done_dir, username, base_url, lcd):
+    def __init__(self, watch_dir, done_dir, username, base_url, state_manager):
         self.watch_dir = watch_dir
         self.done_dir = done_dir
         self.username = username
         self.base_url = base_url
-        self.lcd = lcd
 
         self._mp3_worker = ThreadPoolExecutor(max_workers=2)
         self._json_worker = ThreadPoolExecutor(max_workers=1)
         self._current_work = {}
+        self.state_manager = state_manager
 
     def upload_json(self, filepath, session_id):
         logging.info('upload json %s', filepath)
@@ -85,15 +125,22 @@ class WatchDir(object):
                     self._current_work[filepath].result()
                     logging.info('done, renaming %s -> %s', filepath, donepath)
                     os.rename(filepath, donepath)
+                    return DoneUploading
                 finally:
-                    del self._current_work[filepath]
+                    self._current_work.pop(filepath)
                     
     def enqueue_files(self):
         for f in os.listdir(self.watch_dir):
             try:
-                self.enqueue_file(f)
+                self.state_manager.set_uploading(f)
+
+                if self.enqueue_file(f) == DoneUploading:
+                    self.state_manager.set_done(f)
+
             except Exception as e:
                 logging.exception('error uploading session')
+                self.state_manager.set_error(f)
+
 
 
 def init_lcd(no_pi):
@@ -121,14 +168,26 @@ class Watcher(object):
         self.done_dir = os.path.join(work_dir, 'done')
 
         self.lcd = init_lcd(no_pi)
+        self.upload_tracker = UploadTracker()
 
     def wait_for_wifi(self):
         while not is_connected():
             self.lcd.write('Connecting to {} '.format(self.wifi_name), 0)
             time.sleep(1)
 
-        self.lcd.write('Connected {} ({}) '.format(self.wifi_name, get_local_ip()), 0)
-        self.lcd.write('User: {} '.format(self.username), 1)
+        self.lcd.write('WIFI: {} ({}) User: {} '.format(
+            self.wifi_name,
+            get_local_ip(),
+            self.username
+        ), 0)
+
+    def update_lcd_with_upload_state(self):
+        progress = self.upload_tracker.get_state()
+
+        if progress:
+            self.lcd.write(' '.join(progress) + ' ', 1)
+        else:
+            self.lcd.write('Hold to record', 1)
 
     def watch(self):
         w = WatchDir(
@@ -136,13 +195,14 @@ class Watcher(object):
             self.done_dir,
             self.username,
             self.base_url,
-            self.lcd,
+            self.upload_tracker,
         )
 
         try:
             while True:
-                #self.wait_for_wifi()
+                self.wait_for_wifi()
                 w.enqueue_files()
+                self.update_lcd_with_upload_state()
                 time.sleep(1)
         except KeyboardInterrupt:
             logging.info('shut down the devil sound')
