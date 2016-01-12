@@ -8,6 +8,7 @@ import os
 import logging
 import httplib
 
+
 @stream_request_body
 class UploadHandler(BaseHandler):
     _uploading = set()
@@ -45,10 +46,26 @@ class UploadHandler(BaseHandler):
         self.upload_path = os.path.join(options.upload_dir, self.username, self.session_id + '.mp3')
         self.upload_override = self.request.query == 'override=1'
 
+    def remove_watchdog(self):
+        IOLoop.instance().remove_timeout(self._watchdog)
+
+    def set_watchdog(self):
+        self._watchdog = IOLoop.instance().add_timeout(time.time() + options.inactivity_timeout, self.client_timeout)
+
+    def tick_watchdog(self):
+        logging.debug('watchdog tick')
+
+        self.remove_watchdog()
+        self.set_watchdog()
+
+    def client_timed_out(self):
+        raise HTTPError(500, 'timeout: upload inactive for {} seconds'.format(options.inactivity_timeout))
+
     @gen.coroutine
     def prepare(self):
         logging.info('UploadHandler.prepare')
         self.parse_request()
+        self.set_watchdog()
 
         if self.currently_being_uploaded:
             raise HTTPError(400, 'currently being uploaded')
@@ -61,6 +78,7 @@ class UploadHandler(BaseHandler):
     @gen.coroutine
     def data_received(self, chunk):
         logging.info('UploadHandler.data_received(%d bytes: %r)', len(chunk), chunk[:9])
+        self.tick_watchdog()
         self._fh.write(chunk)
 
     def on_finish(self):
@@ -73,6 +91,8 @@ class UploadHandler(BaseHandler):
     @gen.coroutine
     def post(self, *args):
         logging.info('UploadHandler.post done')
+        
+        self.remove_watchdog()
         self.finish('ok')
 
     @gen.coroutine
