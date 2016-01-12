@@ -20,6 +20,7 @@ define('port', default=55666)
 define('debug', default=True)
 define('server_delay', default=0.5)
 define('upload_dir', default='/usr/share/nginx/html/rekt/uploads')
+define('inactivity_timeout', default=40)
 
 
 def create_audio_url(username, id):

@@ -1,10 +1,12 @@
 from tornado.web import stream_request_body, HTTPError
 from tornado.options import options
+from tornado.ioloop import IOLoop
 from tornado import gen
 
 from base_handler import BaseHandler
 
 import os
+import time
 import logging
 import httplib
 
@@ -50,15 +52,19 @@ class UploadHandler(BaseHandler):
         IOLoop.instance().remove_timeout(self._watchdog)
 
     def set_watchdog(self):
-        self._watchdog = IOLoop.instance().add_timeout(time.time() + options.inactivity_timeout, self.client_timeout)
+        self._watchdog = IOLoop.instance().add_timeout(
+            time.time() + options.inactivity_timeout,
+            self.on_upload_inactivity,
+        )
 
     def tick_watchdog(self):
-        logging.debug('watchdog tick')
-
+        logging.warning('watchdog tick')
         self.remove_watchdog()
         self.set_watchdog()
 
-    def client_timed_out(self):
+    def on_upload_inactivity(self):
+        self.on_finish()
+
         raise HTTPError(500, 'timeout: upload inactive for {} seconds'.format(options.inactivity_timeout))
 
     @gen.coroutine
@@ -66,6 +72,8 @@ class UploadHandler(BaseHandler):
         logging.info('UploadHandler.prepare')
         self.parse_request()
         self.set_watchdog()
+
+        self._data_received = 0
 
         if self.currently_being_uploaded:
             raise HTTPError(400, 'currently being uploaded')
@@ -78,7 +86,14 @@ class UploadHandler(BaseHandler):
     @gen.coroutine
     def data_received(self, chunk):
         logging.info('UploadHandler.data_received(%d bytes: %r)', len(chunk), chunk[:9])
-        self.tick_watchdog()
+
+        # trigger watchdog tick after every 256k of data
+        if self._data_received > 1024*256:
+            self.tick_watchdog()
+            self._data_received = 0
+        else:
+            self._data_received += len(chunk)
+
         self._fh.write(chunk)
 
     def on_finish(self):
