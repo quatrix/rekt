@@ -20,7 +20,7 @@ class LCDManager(object):
             try:
                 command = self.q.get_nowait()
                 msg, line = command
-                logging.info('setting %s %d', msg, line)
+                logging.debug('setting %s %d', msg, line)
                 self.lcd.set(msg, line)
             except Empty:
                 pass
