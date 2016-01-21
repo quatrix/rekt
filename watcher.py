@@ -10,7 +10,7 @@ import click
 import signal
 
 from utils import *
-from lcd import FakeLCDManager, LCDManager
+from lcd import LCDManager
 from threading import Event
 from concurrent.futures import ThreadPoolExecutor
 
@@ -143,19 +143,29 @@ class WatchDir(object):
 
 
 
-def init_lcd(no_pi):
-    if no_pi:
-        lcd = FakeLCDManager()
-    else:
-        lcd = LCDManager()
-
-    lcd.start()
-    return lcd
-
 def suicide():
     logging.info('commiting suicide, bye')
     pid = os.getpid()
     os.kill(pid, signal.SIGTERM)
+
+def get_lcd_driver():
+    lcd_rs        = 26  # Note this might need to be changed to 21 for older revision Pi's.
+    lcd_en        = 19
+    lcd_d4        = 13
+    lcd_d5        = 6
+    lcd_d6        = 5
+    lcd_d7        = 11
+    lcd_backlight = 4
+
+    lcd_columns = 16
+    lcd_rows    = 2
+
+    import Adafruit_CharLCD as LCD
+
+    return LCD.Adafruit_CharLCD(
+        lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7,
+        lcd_columns, lcd_rows, lcd_backlight
+    )
 
 
 class Watcher(object):
@@ -167,7 +177,8 @@ class Watcher(object):
         self.watch_dir = os.path.join(work_dir, 'to_upload')
         self.done_dir = os.path.join(work_dir, 'done')
 
-        self.lcd = init_lcd(no_pi)
+        self.lcd = LCDManager(get_lcd_driver())
+        self.lcd.start()
         self.upload_tracker = UploadTracker()
 
     def wait_for_wifi(self):
@@ -215,7 +226,7 @@ class Watcher(object):
 @click.command()
 @click.option('--work-dir', default='/rec', help='watch dir')
 @click.option('--no-pi', is_flag=True, default=False, help='not on raspberry pi?')
-@click.option('--base-url', default='http://edisdead.com:55666', help='rekt server url')
+@click.option('--base-url', default='http://mimosabox.com:55666', help='rekt server url')
 def main(work_dir, no_pi, base_url):
     Watcher(work_dir, no_pi, base_url).watch()
 
