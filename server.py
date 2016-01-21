@@ -24,7 +24,7 @@ define('inactivity_timeout', default=40)
 
 
 def create_audio_url(username, id):
-    return 'http://edisdead.com/rekt/uploads/{}/{}.mp3'.format(username, id)
+    return 'http://mimosabox.com/rekt/uploads/{}/{}.mp3'.format(username, id)
 
 
 class SessionHandler(BaseHandler):

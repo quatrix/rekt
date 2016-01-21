@@ -43,7 +43,7 @@ def get_wifi_name(work_dir):
 
 def is_connected():
     try:
-        return requests.get('http://edisdead.com').status_code == 200
+        return requests.get('http://mimosabox.com').status_code == 200
     except Exception:
         logging.exception('is connected')
         return False
