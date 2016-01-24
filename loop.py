@@ -21,7 +21,7 @@ led_green = 21
 
 led_rgb = [led_red, led_blue, led_green]
 
-led_peak = 26
+led_peak = 10
 
 work_dir = '/rec'
 upload_dir = '/rec/to_upload'
@@ -50,6 +50,7 @@ class Recorder(object):
         GPIO.setup(pedal, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(led_rgb, GPIO.OUT)
         GPIO.setup(led_peak, GPIO.OUT)
+        GPIO.output(led_peak, 1)
         GPIO.add_event_detect(pedal, GPIO.RISING, callback=self.on_pedal_change, bouncetime=50)
         self.make_rgb_green()
 
@@ -146,13 +147,14 @@ class Recorder(object):
             v = get_peak_vu_meter(self.arecord_process.stderr)
 
             if v is not None and int(v) > 95:
-                GPIO.output(led_peak, 1)
-            else:
                 GPIO.output(led_peak, 0)
+            else:
+                GPIO.output(led_peak, 1)
 
     def stop_rec_monitor(self):
         self._monitor_stop.set()
         self._monitor_thread.join()
+        GPIO.output(led_peak, 1)
 
     @property
     def metadata(self):
