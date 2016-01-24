@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 from utils import get_username, get_next_id
 
 import RPi.GPIO as GPIO
@@ -21,6 +21,7 @@ led_green = 21
 
 led_rgb = [led_red, led_blue, led_green]
 
+rf_pin = 9
 led_peak = 10
 
 work_dir = '/rec'
@@ -44,12 +45,14 @@ class Recorder(object):
         self.recording = False
         self.setup_hardware()
         self.last_pedal_press = None
+        self.mark_lock = Lock()
 
     def setup_hardware(self):
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(pedal, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(led_rgb, GPIO.OUT)
         GPIO.setup(led_peak, GPIO.OUT)
+        GPIO.setup(rf_pin, GPIO.IN)
         GPIO.output(led_peak, 1)
         GPIO.add_event_detect(pedal, GPIO.RISING, callback=self.on_pedal_change, bouncetime=50)
         self.make_rgb_green()
@@ -78,7 +81,7 @@ class Recorder(object):
         if time.time() - t0 > hold_time:
             self.toggle_rec()
         elif self.recording:
-            self.set_mark()
+            self.set_mark(pedal_id=0)
 
         self.last_pedal_press = time.time()
 
@@ -160,7 +163,7 @@ class Recorder(object):
     def metadata(self):
         return {
             'date': self.session_start_time,
-            'markers': self.markers,
+            'markers': [{'offset': m[0], 'pedal_id': m[1]} for m in self.markers],
         }
 
     def write_metadata_file(self):
@@ -171,30 +174,61 @@ class Recorder(object):
 
         os.rename(filename, self.metadata_file)
 
+    def monitor_rf(self):
+        probability = 0
+
+        while True:
+            if self._rf_stop.isSet():
+                break
+
+            if GPIO.input(rf_pin) == 0:
+                probability += 1
+            else:
+                probability = 0
+
+            if probability > 10:
+                probability = 0
+                self.set_mark(pedal_id=1)
+
+            time.sleep(0.01)
+
+    def start_rf_thread(self):
+        self._rf_stop = Event()
+        self._rf_thread = Thread(target=self.monitor_rf, args=())
+        self._rf_thread.start()
+
+    def stop_rf_thread(self):
+        self._rf_stop.set()
+        self._rf_thread.join()
+        pass
+
     def start_recording(self):
         logging.info('starting recording')
         self.markers = []
         self.record_from_mic()
         self.make_rgb_red()
         self.write_metadata_file()
+        self.start_rf_thread()
 
     def stop_recording(self):
         logging.info('stopping recording')
         self.stop_rec_monitor()
         self.arecord_process.terminate()
         self.lame_process.terminate()
+        self.stop_rf_thread()
 
         self.write_metadata_file()
         self.make_rgb_green()
 
-    def set_mark(self):
-        logging.info('setting mark')
-        self.markers.append(self.time_since_session_started)
+    def set_mark(self, pedal_id):
+        with self.mark_lock:
+            logging.info('setting mark')
+            self.markers.append((self.time_since_session_started, pedal_id))
 
-        self.make_rgb_purple()
-        time.sleep(0.2)
-        self.make_rgb_red()
-        self.write_metadata_file()
+            self.make_rgb_purple()
+            time.sleep(0.2)
+            self.make_rgb_red()
+            self.write_metadata_file()
 
     def read_pedal(self):
         return GPIO.input(pedal)
