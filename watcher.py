@@ -8,13 +8,14 @@ import sys
 import logging
 import click
 import signal
+import json
 
 from utils import *
 from lcd import LCDManager
 from threading import Event
 from concurrent.futures import ThreadPoolExecutor
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
 class DoneUploading(object):
@@ -170,26 +171,30 @@ def get_lcd_driver():
 
 class Watcher(object):
     def __init__(self, work_dir, no_pi, base_url):
-        self.wifi_name = get_wifi_name(work_dir)
-        self.username = get_username(work_dir)
         self.base_url = base_url
 
         self.watch_dir = os.path.join(work_dir, 'to_upload')
         self.done_dir = os.path.join(work_dir, 'done')
 
+        self.config = json.loads(open(os.path.join(work_dir, 'mimosa.json')).read())
         self.lcd = LCDManager(get_lcd_driver())
         self.lcd.start()
         self.upload_tracker = UploadTracker()
 
     def wait_for_wifi(self):
+        wifi_ssid = self.config['wifi']['ssid']
+        wifi_pass = self.config['wifi']['pass']
+        username = self.config['username']
+
         while not is_connected():
-            self.lcd.write('Connecting to {} '.format(self.wifi_name), 0)
+            self.lcd.write('Connecting to {} '.format(wifi_ssid), 0)
+            connect_to_wifi(wifi_ssid, wifi_pass)
             time.sleep(1)
 
         self.lcd.write('WIFI: {} ({}) User: {} '.format(
-            self.wifi_name,
+            wifi_ssid,
             get_local_ip(),
-            self.username
+            username
         ), 0)
 
     def update_lcd_with_upload_state(self):
@@ -204,7 +209,7 @@ class Watcher(object):
         w = WatchDir(
             self.watch_dir,
             self.done_dir,
-            self.username,
+            self.config['username'],
             self.base_url,
             self.upload_tracker,
         )

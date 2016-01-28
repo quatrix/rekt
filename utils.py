@@ -6,6 +6,7 @@ import socket
 import fcntl
 import struct
 import time
+from sh import nmcli
 
 wifi_re = re.compile(r'\s+wpa-ssid \"(.+)\"')
 
@@ -43,7 +44,7 @@ def get_wifi_name(work_dir):
 
 def is_connected():
     try:
-        return requests.get('http://mimosabox.com').status_code == 200
+        return requests.get('http://mimosabox.com', timeout=0.5).status_code == 200
     except Exception:
         logging.exception('is connected')
         return False
@@ -92,3 +93,23 @@ def get_next_id():
     open(f, 'w').write(str(_id + 1))
 
     return _id
+
+
+def connected_to_wifi():
+    for device in nmcli('d'):
+        if ' connected' in device.strip():
+            return True
+    else:
+        return False
+
+
+def connect_to_wifi(ssid, password):
+    if connected_to_wifi():
+        return
+
+    try:
+        nmcli('c', 'delete', ssid)
+    except Exception:
+        pass
+
+    nmcli('d', 'wifi', 'connect', ssid, 'password', password)
