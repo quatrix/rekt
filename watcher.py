@@ -187,10 +187,15 @@ class Watcher(object):
         username = self.config['username']
 
         while not is_connected():
+            logging.error('not connected to wifi')
             self.lcd.write('Connecting to {} '.format(wifi_ssid), 0)
-            connect_to_wifi(wifi_ssid, wifi_pass)
+            try:
+                connect_to_wifi(wifi_ssid, wifi_pass)
+            except Exception:
+                logging.exception('connect to wifi')
             time.sleep(1)
 
+        logging.info('connected')
         self.lcd.write('WIFI: {} ({}) User: {} '.format(
             wifi_ssid,
             get_local_ip(),

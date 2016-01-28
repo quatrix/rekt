@@ -186,11 +186,12 @@ class Recorder(object):
             else:
                 probability = 0
 
-            if probability > 10:
+            if probability > 30:
                 probability = 0
                 self.set_mark(pedal_id=1)
+                time.sleep(0.1)
 
-            time.sleep(0.01)
+            time.sleep(0.001)
 
     def start_rf_thread(self):
         self._rf_stop = Event()
