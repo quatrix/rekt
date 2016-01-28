@@ -113,3 +113,8 @@ def connect_to_wifi(ssid, password):
         pass
 
     nmcli('d', 'wifi', 'connect', ssid, 'password', password)
+
+def mkdir_if_not_exists(d):
+    if not os.path.isdir(d):
+        os.mkdir(d)
+

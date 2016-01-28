@@ -181,6 +181,10 @@ class Watcher(object):
         self.lcd.start()
         self.upload_tracker = UploadTracker()
 
+    def run_sanity(self):
+        mkdir_if_not_exists(self.watch_dir)
+        mkdir_if_not_exists(self.done_dir)
+
     def wait_for_wifi(self):
         wifi_ssid = self.config['wifi']['ssid']
         wifi_pass = self.config['wifi']['pass']
@@ -238,7 +242,9 @@ class Watcher(object):
 @click.option('--no-pi', is_flag=True, default=False, help='not on raspberry pi?')
 @click.option('--base-url', default='http://mimosabox.com:55666', help='rekt server url')
 def main(work_dir, no_pi, base_url):
-    Watcher(work_dir, no_pi, base_url).watch()
+    w = Watcher(work_dir, no_pi, base_url)
+    w.run_sanity()
+    w.watch()
 
 if __name__ == '__main__':
     main()
