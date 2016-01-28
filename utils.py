@@ -95,16 +95,16 @@ def get_next_id():
     return _id
 
 
-def connected_to_wifi():
+def get_connected_wifi():
     for device in nmcli('d'):
         if ' connected' in device.strip():
-            return True
+            return device.split()[3]
     else:
         return False
 
 
 def connect_to_wifi(ssid, password):
-    if connected_to_wifi():
+    if get_connected_wifi():
         return
 
     try:
