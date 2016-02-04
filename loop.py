@@ -62,8 +62,8 @@ class Recorder(object):
     def setup_interrupts(self):
         GPIO.add_event_detect(pedal, GPIO.RISING, callback=self.on_pedal_change, bouncetime=50)
 
-    def blink_red(self):
-        self.make_rgb_red()
+    def blink_green(self):
+        self.make_rgb_green()
         time.sleep(0.2)
         self.turn_rgb_off()
         time.sleep(0.2)
@@ -73,7 +73,7 @@ class Recorder(object):
             work_dir = find_work_dir()
 
             if work_dir is None:
-                self.blink_red()
+                self.blink_green()
             else:
                 self.upload_dir = os.path.join(work_dir, 'to_upload')
                 mkdir_if_not_exists(self.upload_dir)

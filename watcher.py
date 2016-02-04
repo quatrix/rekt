@@ -206,7 +206,10 @@ class Watcher(object):
                 break
 
             logging.error('not connected to wifi')
-            self.lcd.write('Connecting to {} '.format(wifi_ssid), 0)
+
+            self.lcd.write('Connecting to', 0)
+            self.lcd.write('{}...'.format(wifi_ssid), 1)
+
             try:
                 connect_to_wifi(wifi_ssid, wifi_pass)
             except Exception:
@@ -229,6 +232,8 @@ class Watcher(object):
             self.lcd.write('Hold to record', 1)
 
     def wait_for_sane_state(self):
+        attempts = 0
+
         while True:
             try:
                 self.lcd.write('Initializing...', 0)
@@ -236,9 +241,13 @@ class Watcher(object):
                 break
             except Exception as e:
                 logging.exception('initialize')
-                self.lcd.write('Init failed:', 0)
-                self.lcd.write(e.message + ' ', 1)
-                time.sleep(5)
+
+                if attempts > 5:
+                    self.lcd.write('Init failed:', 0)
+                    self.lcd.write(e.message + ' ', 1)
+
+                attempts += 1
+                time.sleep(1)
 
     def watch(self):
         self.wait_for_sane_state()
