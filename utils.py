@@ -118,3 +118,8 @@ def mkdir_if_not_exists(d):
     if not os.path.isdir(d):
         os.mkdir(d)
 
+def find_work_dir(base_dir='/media'):
+    for d in os.listdir(base_dir):
+        work_dir = os.path.join(base_dir, d)
+        if os.path.isfile(os.path.join(work_dir, 'mimosa.json')):
+            return work_dir

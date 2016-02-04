@@ -170,18 +170,28 @@ def get_lcd_driver():
 
 
 class Watcher(object):
-    def __init__(self, work_dir, no_pi, base_url):
+    def __init__(self, no_pi, base_url):
         self.base_url = base_url
 
-        self.watch_dir = os.path.join(work_dir, 'to_upload')
-        self.done_dir = os.path.join(work_dir, 'done')
-
-        self.config = json.loads(open(os.path.join(work_dir, 'mimosa.json')).read())
         self.lcd = LCDManager(get_lcd_driver())
         self.lcd.start()
         self.upload_tracker = UploadTracker()
 
-    def run_sanity(self):
+    def initialize(self):
+        work_dir = find_work_dir()
+
+        if work_dir is None:
+            raise RuntimeError('Can\'t find mimosa.json')
+
+        logging.info('work dir found: %s', work_dir)
+
+        try:
+            self.config = json.loads(open(os.path.join(work_dir, 'mimosa.json')).read())
+        except Exception as e:
+            raise RuntimeError('mimosa.json seems invalid')
+
+        self.watch_dir = os.path.join(work_dir, 'to_upload')
+        self.done_dir = os.path.join(work_dir, 'done')
         mkdir_if_not_exists(self.watch_dir)
         mkdir_if_not_exists(self.done_dir)
 
@@ -218,7 +228,21 @@ class Watcher(object):
         else:
             self.lcd.write('Hold to record', 1)
 
+    def wait_for_sane_state(self):
+        while True:
+            try:
+                self.lcd.write('Initializing...', 0)
+                self.initialize()
+                break
+            except Exception as e:
+                logging.exception('initialize')
+                self.lcd.write('Init failed:', 0)
+                self.lcd.write(e.message + ' ', 1)
+                time.sleep(5)
+
     def watch(self):
+        self.wait_for_sane_state()
+
         w = WatchDir(
             self.watch_dir,
             self.done_dir,
@@ -242,13 +266,10 @@ class Watcher(object):
             self.lcd.stop()
 
 @click.command()
-@click.option('--work-dir', default='/rec', help='watch dir')
 @click.option('--no-pi', is_flag=True, default=False, help='not on raspberry pi?')
 @click.option('--base-url', default='http://mimosabox.com:55666', help='rekt server url')
-def main(work_dir, no_pi, base_url):
-    w = Watcher(work_dir, no_pi, base_url)
-    w.run_sanity()
-    w.watch()
+def main(no_pi, base_url):
+    Watcher(no_pi, base_url).watch()
 
 if __name__ == '__main__':
     main()

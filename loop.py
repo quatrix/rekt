@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from threading import Thread, Event, Lock
-from utils import get_username, get_next_id
+from utils import get_username, get_next_id, find_work_dir, mkdir_if_not_exists
 
 import RPi.GPIO as GPIO
 import subprocess
@@ -24,8 +24,6 @@ led_rgb = [led_red, led_blue, led_green]
 rf_pin = 9
 led_peak = 10
 
-work_dir = '/rec'
-upload_dir = '/rec/to_upload'
 hold_time = 1.2 #seconds
 peak_meter_re = re.compile(r'\| (\d\d)\%')
 
@@ -48,14 +46,40 @@ class Recorder(object):
         self.mark_lock = Lock()
 
     def setup_hardware(self):
+        self.setup_io_pins()
+        self.wait_for_sane_state()
+        self.setup_interrupts()
+        self.make_rgb_green()
+
+    def setup_io_pins(self):
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(pedal, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(led_rgb, GPIO.OUT)
         GPIO.setup(led_peak, GPIO.OUT)
         GPIO.setup(rf_pin, GPIO.IN)
         GPIO.output(led_peak, 1)
+
+    def setup_interrupts(self):
         GPIO.add_event_detect(pedal, GPIO.RISING, callback=self.on_pedal_change, bouncetime=50)
-        self.make_rgb_green()
+
+    def blink_red(self):
+        self.make_rgb_red()
+        time.sleep(0.2)
+        self.turn_rgb_off()
+        time.sleep(0.2)
+    
+    def wait_for_sane_state(self):
+        while True:
+            work_dir = find_work_dir()
+
+            if work_dir is None:
+                self.blink_red()
+            else:
+                self.upload_dir = os.path.join(work_dir, 'to_upload')
+                mkdir_if_not_exists(self.upload_dir)
+                return
+        
+
 
     def on_pedal_change(self, channel):
         time.sleep(0.02)
@@ -113,8 +137,8 @@ class Recorder(object):
     def create_session(self):
         self.session_start_time = int(time.time())
         self.session_id = get_next_id()
-        self.session_file = os.path.join(upload_dir, '{}.mp3'.format(self.session_id))
-        self.metadata_file = os.path.join(upload_dir, '{}.json'.format(self.session_id))
+        self.session_file = os.path.join(self.upload_dir, '{}.mp3'.format(self.session_id))
+        self.metadata_file = os.path.join(self.upload_dir, '{}.json'.format(self.session_id))
         logging.info('created session, session id: %d', self.session_id)
 
     @property
