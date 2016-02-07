@@ -228,7 +228,7 @@ class Watcher(object):
 
         for attempt in xrange(attempts):
             self.lcd.write('Connecting to', 0)
-            self.lcd.write('{}.. {}/{}'.format(wifi_ssid[0:11], attempt, attempts), 1)
+            self.lcd.write('{}.. {}/{}'.format(wifi_ssid[0:9], attempt, attempts), 1)
 
             try:
                 connect_to_wifi(wifi_ssid, wifi_pass)

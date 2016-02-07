@@ -104,8 +104,13 @@ def connect_to_wifi(ssid, password):
     except Exception:
         pass
 
+    try:
+        with sudo:
+            nmcli('d', 'disconnect', 'wlan0')
+    except Exception:
+        pass
+
     with sudo:
-        nmcli('d', 'disconnect', 'wlan0')
         nmcli('d', 'wifi', 'connect', ssid, 'password', password)
 
 
