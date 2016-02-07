@@ -69,7 +69,7 @@ class LCD(object):
             self.lcd.write8(ord(char), True)
 
     def write_to_lcd(self, text, line):
-        logging.info('writing to lcd (line: %d) %s', line, text)
+        logging.debug('writing to lcd (line: %d) %s', line, text)
 
         if self._cache[line] != text:
             self.clear_line(line)

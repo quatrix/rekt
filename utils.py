@@ -6,7 +6,7 @@ import socket
 import fcntl
 import struct
 import time
-from sh import nmcli
+from sh import nmcli, sudo
 
 wifi_re = re.compile(r'\s+wpa-ssid \"(.+)\"')
 
@@ -34,17 +34,9 @@ def iterfile(filename, offset):
                 _attempts += 1 
 
 
-def get_wifi_name(work_dir):
-    for l in open(os.path.join(work_dir, 'config/wifi')).readlines():
-        r = wifi_re.search(l)
-
-        if r:
-            return r.group(1)
-
-
 def is_connected():
     try:
-        return requests.get('http://mimosabox.com', timeout=0.5).status_code == 200
+        return requests.get('http://mimosabox.com', timeout=1.0).status_code == 200
     except Exception:
         logging.exception('is connected')
         return False
@@ -82,9 +74,9 @@ def scrolling_text(text, chars):
 
 
 def get_session_and_ext(f):
-	session_id, ext = os.path.splitext(f)
+    session_id, ext = os.path.splitext(f)
 
-	return session_id, ext[1:]
+    return session_id, ext[1:]
 
 def get_next_id():
     f = '/opt/rekt/_id'
@@ -96,23 +88,25 @@ def get_next_id():
 
 
 def get_connected_wifi():
-    for device in nmcli('d'):
-        if ' connected' in device.strip():
-            return device.split()[3]
-    else:
-        return False
+    try:
+        for device in nmcli('d'):
+            if ' connected' in device.strip():
+                return device.split()[3]
+    except Exception:
+        logging.exception('get connected wifi')
+
 
 
 def connect_to_wifi(ssid, password):
-    if get_connected_wifi():
-        return
-
     try:
-        nmcli('c', 'delete', ssid)
+        with sudo:
+            nmcli('c', 'delete', ssid)
     except Exception:
         pass
 
-    nmcli('d', 'wifi', 'connect', ssid, 'password', password)
+    with sudo:
+        nmcli('d', 'wifi', 'connect', ssid, 'password', password)
+
 
 def mkdir_if_not_exists(d):
     if not os.path.isdir(d):

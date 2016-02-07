@@ -14,6 +14,7 @@ from utils import *
 from lcd import LCDManager
 from threading import Event
 from concurrent.futures import ThreadPoolExecutor
+from sh import pidof
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
@@ -195,33 +196,62 @@ class Watcher(object):
         mkdir_if_not_exists(self.watch_dir)
         mkdir_if_not_exists(self.done_dir)
 
+        logging.info('waiting for network manager to start')
+        self.wait_for_network_manager_to_start()
+
+    def wait_for_network_manager_to_start(self):
+        while True:
+            try:
+                if pidof('NetworkManager'):
+                    return
+            except Exception:
+                pass
+
+            time.sleep(1)
+
     def wait_for_wifi(self):
         wifi_ssid = self.config['wifi']['ssid']
         wifi_pass = self.config['wifi']['pass']
         username = self.config['username']
 
-        while True:
-            if is_connected():
-                connected_wifi = get_connected_wifi()
-                break
+        self.lcd.write('Connecting to', 0)
+        self.lcd.write('{}...'.format(wifi_ssid), 1)
 
-            logging.error('not connected to wifi')
+        connected_wifi = get_connected_wifi()
 
-            self.lcd.write('Connecting to', 0)
-            self.lcd.write('{}...'.format(wifi_ssid), 1)
+        if connected_wifi == wifi_ssid:
+            logging.info('connected to the wifi specified in mimosa.json')
+            return
 
+        if connected_wifi is None:
+            logging.error('not connected')
+        else:
+            logging.error('connected to %s, this is not what is specified in mimosa.json', connected_wifi)
+
+        for _ in xrange(30):
             try:
                 connect_to_wifi(wifi_ssid, wifi_pass)
+                connected_wifi = get_connected_wifi()
+
+                if connected_wifi == wifi_ssid:
+                    logging.info('connected to the wifi specified in mimosa.json')
+                    return
             except Exception:
                 logging.exception('connect to wifi')
+
             time.sleep(1)
 
-        logging.info('connected')
-        self.lcd.write('WIFI: {} ({}) User: {} '.format(
-            connected_wifi,
-            get_local_ip(),
-            username
-        ), 0)
+        logging.error('couldn\'t connect to wifi specified in mimosa.json, trying any wifi')
+
+        while True:
+            connected_wifi = get_connected_wifi()
+
+            logging.info('connected wifi: "%s"', connected_wifi)
+
+            if connected_wifi is not None:
+                return
+
+            time.sleep(1)
 
     def update_lcd_with_upload_state(self):
         progress = self.upload_tracker.get_state()
@@ -249,8 +279,21 @@ class Watcher(object):
                 attempts += 1
                 time.sleep(1)
 
+    def wait_for_connectivity(self):
+        while True:
+            if is_connected():
+                return
+
+            time.sleep(1)
+        
+    def print_wifi_info(self):
+        connected_wifi = get_connected_wifi()
+        if connected_wifi:
+            self.lcd.write('{} ({}) '.format(connected_wifi, get_local_ip()), 0)
+
     def watch(self):
         self.wait_for_sane_state()
+        self.wait_for_wifi()
 
         w = WatchDir(
             self.watch_dir,
@@ -262,7 +305,8 @@ class Watcher(object):
 
         try:
             while True:
-                self.wait_for_wifi()
+                self.print_wifi_info()
+                self.wait_for_connectivity()
                 w.enqueue_files()
                 self.update_lcd_with_upload_state()
                 time.sleep(1)
