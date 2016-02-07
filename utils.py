@@ -91,7 +91,7 @@ def get_connected_wifi():
     try:
         for device in nmcli('d'):
             if ' connected' in device.strip():
-                return device.split()[3]
+                return ' '.join(device.split()[3:])
     except Exception:
         logging.exception('get connected wifi')
 
@@ -105,8 +105,16 @@ def connect_to_wifi(ssid, password):
         pass
 
     with sudo:
+        nmcli('d', 'disconnect', 'wlan0')
         nmcli('d', 'wifi', 'connect', ssid, 'password', password)
 
+
+def  connect_to_any_wifi():
+    try:
+        with sudo:
+            nmcli('d', 'connect', 'wlan0')
+    except Exception:
+        logging.exception('connect to any wifi')
 
 def mkdir_if_not_exists(d):
     if not os.path.isdir(d):

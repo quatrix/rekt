@@ -213,9 +213,7 @@ class Watcher(object):
         wifi_ssid = self.config['wifi']['ssid']
         wifi_pass = self.config['wifi']['pass']
         username = self.config['username']
-
-        self.lcd.write('Connecting to', 0)
-        self.lcd.write('{}...'.format(wifi_ssid), 1)
+        attempts = 5
 
         connected_wifi = get_connected_wifi()
 
@@ -228,7 +226,10 @@ class Watcher(object):
         else:
             logging.error('connected to %s, this is not what is specified in mimosa.json', connected_wifi)
 
-        for _ in xrange(30):
+        for attempt in xrange(attempts):
+            self.lcd.write('Connecting to', 0)
+            self.lcd.write('{}.. {}/{}'.format(wifi_ssid[0:11], attempt, attempts), 1)
+
             try:
                 connect_to_wifi(wifi_ssid, wifi_pass)
                 connected_wifi = get_connected_wifi()
@@ -244,6 +245,7 @@ class Watcher(object):
         logging.error('couldn\'t connect to wifi specified in mimosa.json, trying any wifi')
 
         while True:
+            connect_to_any_wifi()
             connected_wifi = get_connected_wifi()
 
             logging.info('connected wifi: "%s"', connected_wifi)
