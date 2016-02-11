@@ -187,7 +187,8 @@ class Watcher(object):
         logging.info('work dir found: %s', work_dir)
 
         try:
-            self.config = json.loads(open(os.path.join(work_dir, 'mimosa.json')).read())
+            self.config_file = os.path.join(work_dir, 'mimosa.json')
+            self.config = json.loads(open(self.config_file).read())
         except Exception as e:
             raise RuntimeError('mimosa.json seems invalid')
 
@@ -202,6 +203,43 @@ class Watcher(object):
         if not self.connect_to_wifi():
             raise RuntimeError('Can\'t find WiFi')
 
+        logging.info('getting configuration updates')
+        self.get_updates()
+
+        if hasattr(self, 'need_to_reconnect_to_wifi'):
+            self.lcd.write('Config Updated', 0)
+            self.lcd.write('reconnecting...', 1)
+            time.sleep(1)
+
+            if not self.connect_to_wifi():
+                raise RuntimeError('Can\'t find WiFi')
+
+    def get_updates(self):
+        url = '{}/config/{}'.format(self.base_url, self.config['username'])
+        logging.info('config url: %s', url)
+
+        try:
+            config = requests.get(url).json()
+
+            if 'error' in config:
+                logging.error('server returned error when asking for config: %s', config['error'])
+                return
+
+            if config != self.config:
+                logging.info('configuration changed!')
+                if config['wifi'] != self.config['wifi']:
+                    logging.info('wifi changed!')
+                    self.need_to_reconnect_to_wifi = True
+                else:
+                    logging.info('wifi didn\'t change')
+
+                self.config = config
+                open(self.config_file, 'w').write(json.dumps(config))
+            else:
+                logging.info('configuration didn\'t change')
+        except Exception:
+            logging.exception('get updates')
+         
 
     def wait_for_network_manager_to_start(self):
         while True:
@@ -303,8 +341,6 @@ class Watcher(object):
             self.lcd.write('{} ({}) '.format(connected_wifi, get_local_ip()), 0)
 
     def watch(self):
-        self.wait_for_sane_state()
-
         w = WatchDir(
             self.watch_dir,
             self.done_dir,
@@ -332,7 +368,9 @@ class Watcher(object):
 @click.option('--no-pi', is_flag=True, default=False, help='not on raspberry pi?')
 @click.option('--base-url', default='http://mimosabox.com:55666', help='rekt server url')
 def main(no_pi, base_url):
-    Watcher(no_pi, base_url).watch()
+    w = Watcher(no_pi, base_url)
+    w.wait_for_sane_state()
+    w.watch()
 
 if __name__ == '__main__':
     main()
