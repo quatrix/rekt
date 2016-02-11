@@ -199,6 +199,10 @@ class Watcher(object):
         logging.info('waiting for network manager to start')
         self.wait_for_network_manager_to_start()
 
+        if not self.connect_to_wifi():
+            raise RuntimeError('Can\'t find WiFi')
+
+
     def wait_for_network_manager_to_start(self):
         while True:
             try:
@@ -209,7 +213,7 @@ class Watcher(object):
 
             time.sleep(1)
 
-    def wait_for_wifi(self):
+    def connect_to_wifi(self):
         wifi_ssid = self.config['wifi']['ssid']
         wifi_pass = self.config['wifi']['pass']
         username = self.config['username']
@@ -219,7 +223,7 @@ class Watcher(object):
 
         if connected_wifi == wifi_ssid:
             logging.info('connected to the wifi specified in mimosa.json')
-            return
+            return True
 
         if connected_wifi is None:
             logging.error('not connected')
@@ -228,7 +232,7 @@ class Watcher(object):
 
         for attempt in xrange(attempts):
             self.lcd.write('Connecting to', 0)
-            self.lcd.write('{}.. {}/{}'.format(wifi_ssid[0:9], attempt, attempts), 1)
+            self.lcd.write('{}... {}/{}'.format(wifi_ssid[0:9], attempt + 1, attempts), 1)
 
             try:
                 connect_to_wifi(wifi_ssid, wifi_pass)
@@ -236,7 +240,7 @@ class Watcher(object):
 
                 if connected_wifi == wifi_ssid:
                     logging.info('connected to the wifi specified in mimosa.json')
-                    return
+                    return True
             except Exception:
                 logging.exception('connect to wifi')
 
@@ -244,16 +248,21 @@ class Watcher(object):
 
         logging.error('couldn\'t connect to wifi specified in mimosa.json, trying any wifi')
 
-        while True:
+        for attempt in xrange(attempts):
+            self.lcd.write('Trying other', 0)
+            self.lcd.write('WiFis.. {}/{}'.format(attempt + 1, attempts), 1)
             connect_to_any_wifi()
             connected_wifi = get_connected_wifi()
 
             logging.info('connected wifi: "%s"', connected_wifi)
 
             if connected_wifi is not None:
-                return
+                return True
 
             time.sleep(1)
+
+        self.lcd.write('No WiFi found', 0)
+        self.lcd.write('Retrying...', 1)
 
     def update_lcd_with_upload_state(self):
         progress = self.upload_tracker.get_state()
@@ -295,7 +304,6 @@ class Watcher(object):
 
     def watch(self):
         self.wait_for_sane_state()
-        self.wait_for_wifi()
 
         w = WatchDir(
             self.watch_dir,
