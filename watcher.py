@@ -308,7 +308,7 @@ class Watcher(object):
         if progress:
             self.lcd.write(' '.join(progress) + ' ', 1)
         else:
-            self.lcd.write('Hold to record', 1)
+            self.lcd.write('', 1)
 
     def wait_for_sane_state(self):
         attempts = 0
@@ -333,12 +333,15 @@ class Watcher(object):
             if is_connected():
                 return
 
+            self.lcd.write('No network', 1)
             time.sleep(1)
         
     def print_wifi_info(self):
         connected_wifi = get_connected_wifi()
         if connected_wifi:
             self.lcd.write('{} ({}) '.format(connected_wifi, get_local_ip()), 0)
+        else:
+            self.lcd.write('No Wifi', 0)
 
     def watch(self):
         w = WatchDir(
