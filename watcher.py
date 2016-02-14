@@ -111,8 +111,13 @@ class WatchDir(object):
     def enqueue_file(self, f):
         session_id, ext = get_session_and_ext(f)
 
+        logging.info('enqueue_file || session_id: "%s" ext: "%s"', session_id, ext)
+
         if ext not in self.SUPPORTED_EXTS:
+            logging.info('ext "%s" not supported', ext)
             return
+
+        logging.info('ext "%s" supported', ext)
 
         filepath = os.path.join(self.watch_dir, f)
         donepath = os.path.join(self.done_dir, f)

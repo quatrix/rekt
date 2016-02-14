@@ -36,7 +36,7 @@ def iterfile(filename, offset):
 
 def is_connected():
     try:
-        return requests.get('http://mimosabox.com', timeout=1.0).status_code == 200
+        return requests.get('http://mimosabox.com', timeout=2.0).status_code == 200
     except Exception:
         logging.exception('is connected')
         return False
