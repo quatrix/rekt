@@ -58,22 +58,12 @@ class LCD(object):
         self._lines_text[line] = text
         self.lines[line] = scrolling_text(text, self.chars)
 
-    def clear_line(self, line):
-        self.lcd.set_cursor(0, line)
-        self._write(' '*self.chars, line)
-
-    def _write(self, text, line):
-        self.lcd.set_cursor(0, line)
-
-        for char in text:
-            self.lcd.write8(ord(char), True)
-
     def write_to_lcd(self, text, line):
         logging.debug('writing to lcd (line: %d) %s', line, text)
 
         if self._cache[line] != text:
-            self.clear_line(line)
-            self._write(text, line)
+            self.lcd.clear_line(line)
+            self.lcd.write_line(text, line)
             self._cache[line] = text
 
     def update(self):

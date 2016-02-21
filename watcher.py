@@ -9,6 +9,7 @@ import logging
 import click
 import signal
 import json
+import types
 
 from utils import *
 from lcd import LCDManager
@@ -155,7 +156,7 @@ def suicide():
     pid = os.getpid()
     os.kill(pid, signal.SIGTERM)
 
-def get_lcd_driver():
+def lcd_parallel_driver():
     lcd_rs        = 26  # Note this might need to be changed to 21 for older revision Pi's.
     lcd_en        = 19
     lcd_d4        = 13
@@ -169,10 +170,51 @@ def get_lcd_driver():
 
     import Adafruit_CharLCD as LCD
 
-    return LCD.Adafruit_CharLCD(
+    lcd = LCD.Adafruit_CharLCD(
         lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7,
         lcd_columns, lcd_rows, lcd_backlight
     )
+
+    def write_line(self, text, line):
+        self.set_cursor(0, line)
+
+        for char in text:
+            self.write8(ord(char), True)
+
+    def clear_line(self, line):
+        self.set_cursor(0, line)
+        self.write_line(' '*lcd_columns, line)
+
+    lcd.clear_line= types.MethodType(clear_line, lcd)
+    lcd.write_line = types.MethodType(write_line, lcd)
+
+    return lcd
+
+def lcd_i2c_driver():
+    import RPi_I2C_driver
+
+    lcd = RPi_I2C_driver.lcd()
+
+    def write_line(self, text, line):
+        logging.info('writing to line %d: %s', line, text)
+        self.lcd_display_string(text, line+1)
+
+    def clear_line(self, line):
+        self.lcd_display_string(' ' * 16, line+1)
+
+
+    lcd.clear_line= types.MethodType(clear_line, lcd)
+    lcd.write_line = types.MethodType(write_line, lcd)
+
+    return lcd
+
+def get_lcd_driver():
+    if 'LCD_I2C' in os.environ:
+        logging.info('lcd: using i2c driver')
+        return lcd_i2c_driver()
+
+    logging.info('lcd: using parallel driver')
+    return lcd_parallel_driver()
 
 
 class Watcher(object):
