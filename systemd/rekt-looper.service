@@ -1,0 +1,12 @@
+[Unit]
+DefaultDependencies=false
+Description=Rekt Looper service
+After=local-fs-pre.target
+Before=local-fs.target
+
+[Service]
+ExecStart=/home/pi/rekt/.pyenv/bin/python /home/pi/rekt/loop.py
+Restart=always
+
+[Install]
+WantedBy=local-fs.target

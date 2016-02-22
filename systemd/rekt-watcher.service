@@ -1,0 +1,13 @@
+[Unit]
+Description=Rekt Watcher service
+DefaultDependencies=false
+After=local-fs-pre.target
+Before=local-fs.target
+
+[Service]
+Environment=LCD_I2C=1
+ExecStart=/home/pi/rekt/.pyenv/bin/python /home/pi/rekt/watcher.py
+Restart=always
+
+[Install]
+WantedBy=local-fs.target
