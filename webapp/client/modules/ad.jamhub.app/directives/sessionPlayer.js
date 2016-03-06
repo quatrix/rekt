@@ -201,9 +201,9 @@ angular.module('ad.jamhub.app').directive('sessionPlayer', [function () {
                     });
 
                     $scope.wavesurfer.on('redraw', function (peaks, width) {
-
-
-                        if (peaks.length) {
+                        console.log('peaks length', peaks.length);
+                        if (peaks.length && !$scope.currentSession.peaks) {
+                            console.log('sending peaks to server');
                             jhApiSrv.putSession($scope.currentSession.id, {'peaks': peaks}).then(function (response) {
                             });
                         }
@@ -322,9 +322,7 @@ angular.module('ad.jamhub.app').directive('sessionPlayer', [function () {
                     if (!newValue || !oldValue || newValue.id === oldValue.id) {
                         return;
                     }
-                    for(var i=0; i<3;i++) {
-                        $scope.currentSession.peaks = utils.diluteArray($scope.currentSession.peaks, 2);
-                    }
+                    //$scope.currentSession.peaks = [];
                     removeMarkersAndSlices();
                 });
 
