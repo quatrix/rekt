@@ -1,0 +1,37 @@
+<div class="preview">
+    <navbar is-preview="true"></navbar>
+    <div class="main-column">
+
+        <session-player current-session="currentSession"
+                        active-slice="activeSlice"></session-player>
+
+        <div class="slices">
+            <div class="header">
+                <div class="title">
+                    Slices
+                </div>
+            </div>
+            <div class="embeded-message" ng-show="showNoSlicesMessage()">
+                <div class="title">
+                    No Slices
+                </div>
+                <div class="subtitle">
+                    Set the regions in the session and click "Update Slices" to focus on slices
+                </div>
+            </div>
+            <div class="uil-ring-css" ng-show="isLoading">
+                <div></div>
+            </div>
+            <slice-player
+                    ng-repeat="slice in currentSession.slices"
+                    current-session="currentSession"
+                    active-slice="activeSlice"
+                    slice="slice"
+                    slice-index="$index"
+                    id="{{'slice'+$index}}"
+                    ng-mouseover="setActiveSlice(slice)"
+                    ng-mouseleave="setActiveSlice(null)">
+            </slice-player>
+        </div>
+    </div>
+</div>

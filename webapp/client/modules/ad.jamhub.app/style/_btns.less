@@ -1,0 +1,101 @@
+.btn-icon {
+  background: transparent;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: 20px;
+
+  width: 50px;
+  background: none;
+  border: none;
+  padding: 10px;
+  i {
+    font-size: 24px;
+  }
+
+  &.light {
+    color: @btnIconLightColor !important;;
+
+    &:hover {
+      background-color: @btnIconLightHoverBgColor;
+    }
+    &:active {
+      background-color: @btnIconLightActiveBgColor;
+    }
+  }
+
+  &.dark {
+    color: @btnIconDarkColor !important;;
+
+    &:hover {
+      background-color: @btnIconDarkHoverBgColor;
+    }
+    &:active {
+      background-color: @btnIconDarkActiveBgColor;
+    }
+  }
+
+}
+
+button{
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.btn-primary{
+  background: @btnPrimaryBgColor;
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  color:#fff;
+  min-width: 100px;
+  &:hover {
+    background-color: @btnPrimaryBgHoverColor;
+  }
+  &:focus {
+    background-color: transparent;
+  }
+  &:active {
+    background-color: @btnPrimaryBgHoverColor;
+  }
+}
+
+.btn-default {
+  background: transparent;
+  outline: none !important;
+  box-shadow: none !important;
+
+
+
+  &.dark {
+    color: #fff;
+    &:hover {
+      background: transparent;
+      border-color: #fff;
+
+    }
+    &:focus {
+      border-color: #cccccc;
+    }
+    &:active {
+    }
+
+  }
+
+  &:hover {
+    background-color: @btnIconLightHoverBgColor;
+  }
+  &:focus {
+    background-color: transparent;
+    border-color: #cccccc;
+  }
+  &:active {
+    background-color: @btnIconLightActiveBgColor;
+  }
+}
+
+.floating-button-left{
+  color: #fff;
+  position: absolute;
+  top: 30px;
+  left: 30px;
+}

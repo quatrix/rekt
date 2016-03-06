@@ -1,0 +1,75 @@
+<div class="box-files-form">
+
+    <a href="#!/sessions" class="btn btn-default dark floating-button-left">Back</a>
+
+    <div>
+        <div class="title">
+            Update your box with new WIFI connection
+        </div>
+        <div class="box">
+            <div class="spinner-wrapper" ng-show="isLoading">
+                <div class="uil-ring-css spinner" >
+                    <div></div>
+                </div>
+            </div>
+            <form class="box-form" name="mimosaFilesForm" role="form">
+                <div class="form-group">
+                    <div class="input-label">WIFI Name:</div>
+                    <input name="wifiName"
+                           type="text"
+                           class="form-control"
+                           ng-model="wifiName"
+                           placeholder="The name of the wifi"
+                           ng-change="updateData()"
+                           autofocus
+                            required
+                            ng-class="{error: mimosaFilesForm.wifiName.$error.required}"/>
+                </div>
+                <div class="form-group">
+                    <div class="input-label">WIFI Password:</div>
+                    <input name="password"
+                           type="password"
+                           class="form-control"
+                           ng-model="wifiPassword"
+                           ng-change="updateData()"
+                           placeholder="******"
+                           required
+                           ng-class="{error: mimosaFilesForm.password.$error.required, 'hidden': showPassword}"/>
+                    <input type="text"
+                           class="form-control"
+                           ng-model="wifiPassword"
+                           ng-change="updateData()"
+                           placeholder="******"
+                           ng-class="{error: mimosaFilesForm.password.$error.required, 'hidden': !showPassword}"/>
+                    <input type="checkbox" ng-model="showPassword"> Show password
+                </div>
+                <a class="btn btn-default btn-block"
+                   ng-disabled="!mimosaFilesForm.$valid || isLoading"
+                   ng-click="updateBoxWifi()">
+                    Update Box
+                </a>
+            </form>
+        </div>
+        <div style="color: #fff;
+                    font-size: 12px;
+                    margin-top: 10px;
+                    opacity: .5;
+                    font-weight: lighter;">
+            <i class="icon ion-information-circled" style="font-size: 16px;"></i>
+            This will force the box to connect to this WIFI. once updated the box will remember this WIFI for future connections
+        </div>
+
+        <div class="download-message">
+            If the box is not connected at the moment you can
+            <a
+                    ng-disabled="!mimosaFilesForm.$valid"
+                    ng-href="data:{{data}}"
+                    download='{{fileName}}'>
+                download this file
+            </a>
+            & place it in the root directory of the box storage device
+        </div>
+
+
+    </div>
+</div>

@@ -1,0 +1,10 @@
+<div class="session-tags">
+    <div class="title"> Tags: </div>
+    <tags-input ng-model="tags"
+                on-tag-added="saveTags()"
+                on-tag-removed="saveTags()">
+        <auto-complete source="loadTags($query)"
+                       min-length="0"
+                       select-first-match="false"></auto-complete>
+    </tags-input>
+</div>

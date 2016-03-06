@@ -1,0 +1,21 @@
+<div class="uploadSession" uib-tooltip="Drag audio files or click here">
+
+    <div ngf-drop
+         ngf-select
+         ng-model="file"
+         class="drop-box"
+         ngf-drag-over-class="dragover"
+         ngf-multiple="false"
+         ngf-allow-dir="true"
+         accept=".mp3">
+
+        <div class="loader" ng-style="{width: progress+'%'}"
+                ng-show="progress < 100"></div>
+
+        <div class="message">
+            <i class="icon ion-android-upload"></i> Upload Sessions
+        </div>
+
+    </div>
+    <div ngf-no-file-drop>File Drag/Drop is not supported for this browser</div>
+</div>

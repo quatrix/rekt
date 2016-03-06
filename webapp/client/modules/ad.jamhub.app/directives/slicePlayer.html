@@ -1,0 +1,43 @@
+<div class="slice" ng-class="{'active' : isActive()}">
+    <div class="info">
+        <div>
+            {{secsToTimeStamp(slice.start)}}
+        </div>
+
+        <div>
+            {{secsToTimeStamp(slice.end)}}
+        </div>
+    </div>
+    <ng-wavesurfer class="wavesurfer"
+                   url="{{currentSession.audioUrl}}"
+                   wave-color="{{waveOptions.waveColor}}"
+                   progress-color="{{waveOptions.progressColor}}"
+                   height="{{waveOptions.height}}">
+    </ng-wavesurfer>
+    <div class="loading-bar"
+         ng-style="{width: loadingPrc +'%'}"
+         ng-show="loadingPrc != 100">
+    </div>
+    <div id="{{'slice-wave-timeline'+sliceIndex}}"></div>
+    <div class="actions ani-outCubic">
+        <div>
+            <button class="btn btn-icon btn-play dark" uib-tooltip="Play" ng-click="wavesurfer.playPause()">
+                <span id="play" ng-show="paused">
+                    <i class="icon ion-play dark"></i>
+                </span>
+                <span id="pause" ng-show="!paused" uib-tooltip="Pause" class="ng-hide">
+                    <i class="icon ion-pause"></i>
+                </span>
+            </button>
+        </div>
+        <div class="right">
+            <button class="btn btn-icon dark" uib-tooltip="Download Slice" ng-click="openSaveSliceModal()">
+                <i class="icon ion-android-download dark"/>
+            </button>
+            <button class="btn btn-icon dark" uib-tooltip="Delete Slice" ng-click="openConfirmModal()">
+                <i class="icon icon ion-trash-b dark"/>
+            </button>
+        </div>
+
+    </div>
+</div>

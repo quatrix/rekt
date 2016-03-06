@@ -1,0 +1,41 @@
+
+
+html,body, .shell{
+  height: 100%;
+  >div{
+    height: 100%;
+    >div{
+      height: 100%;
+    }
+  }
+}
+
+.page{
+  display: flex;
+  display:-webkit-flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.layout-left-sidebar{
+  display: flex;
+  display:-webkit-flex;
+  flex: 1;
+  -webkit-flex: 1;
+
+  .side-bar{
+    width: 260px;
+    background-color: @sideebarBg;
+    color: @light-gray;
+    bottom: 0;
+    top: 0;
+  }
+  .main-column{
+    flex: 1;
+    -webkit-flex: 1;
+    background-color: @light-gray3;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+}

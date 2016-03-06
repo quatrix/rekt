@@ -1,0 +1,92 @@
+@import "../../../lib/bootstrap/less/bootstrap";
+@import "_variables.less";
+@import "_fonts.less";
+@import "_navbar.less";
+@import "_layout.less";
+@import "_sessionsTable.less";
+@import "_sessionToolBar.less";
+@import "_player.less";
+@import "_btns.less";
+@import "_slices.less";
+@import "_soundBars.less";
+@import "_loadingSpinner.less";
+@import "_signin.less";
+@import "_form.less";
+@import "_uploadSession.less";
+@import "_modal.less";
+@import "_metadata.less";
+@import "_tags.less";
+@import "_inputRange.less";
+@import "_boxFiles.less";
+@import "_session.less";
+
+body{
+  font-family: 'Roboto';
+}
+
+a{
+  text-decoration: none !important;
+  word-wrap: break-word;
+}
+
+.ani-linear{
+  -webkit-transition: all @ani-speed-normal cubic-bezier(0.250, 0.250, 0.750, 0.750);
+  -moz-transition: all @ani-speed-normal cubic-bezier(0.250, 0.250, 0.750, 0.750);
+  -o-transition: all @ani-speed-normal cubic-bezier(0.250, 0.250, 0.750, 0.750);
+  transition: all @ani-speed-normal cubic-bezier(0.250, 0.250, 0.750, 0.750); /* linear */
+
+  -webkit-transition-timing-function: cubic-bezier(0.250, 0.250, 0.750, 0.750);
+  -moz-transition-timing-function: cubic-bezier(0.250, 0.250, 0.750, 0.750);
+  -o-transition-timing-function: cubic-bezier(0.250, 0.250, 0.750, 0.750);
+  transition-timing-function: cubic-bezier(0.250, 0.250, 0.750, 0.750); /* linear */
+}
+
+.ani-outCubic{
+  -webkit-transition: all @ani-speed-normal cubic-bezier(0.215, 0.610, 0.355, 1.000);
+  -moz-transition: all @ani-speed-normal cubic-bezier(0.215, 0.610, 0.355, 1.000);
+  -o-transition: all @ani-speed-normal cubic-bezier(0.215, 0.610, 0.355, 1.000);
+  transition: all @ani-speed-normal cubic-bezier(0.215, 0.610, 0.355, 1.000); /* easeOutCubic */
+
+  -webkit-transition-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+  -moz-transition-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+  -o-transition-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+  transition-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000); /* easeOutCubic */
+}
+
+div::-webkit-scrollbar , textarea::-webkit-scrollbar {
+  width: 5px;
+}
+
+div::-webkit-scrollbar-track, textarea::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+div::-webkit-scrollbar-thumb, textarea::-webkit-scrollbar-thumb {
+  background-color: @gray;
+  border-radius: 5px;
+}
+
+.embeded-message{
+  text-align: center;
+  opacity: .5;
+  padding: 0 20px;
+  .title{
+    font-size: 30px;
+    font-weight: bold;
+  }
+}
+
+.wavesurfer-handle{
+  width: 5px !important;
+  max-width: inherit  !important;;
+}
+
+.ellipsis{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-menu > li > a{
+  padding: 15px 20px;
+}

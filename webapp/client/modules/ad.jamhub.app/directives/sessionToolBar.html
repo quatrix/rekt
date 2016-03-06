@@ -1,0 +1,55 @@
+<div class="session-tool-bar">
+    <button class="btn-icon hamburger" ng-click="showSideBar = true">
+        <i class="icon ion-navicon"/>
+    </button>
+    <div class="title ellipsis">
+        <input type="text" ng-model="sessionName"
+               ng-style="{width:inputWidth()}"
+               ng-click="inputEditMode = !inputEditMode"
+               ng-class="{'editmode':inputEditMode}"
+               ng-focus="inputFocuse()"
+               ng-blur="setSessionName()">
+
+        <div id="inputShadow">{{sessionName}}</div>
+    </div>
+    <!--<div class="actions">-->
+        <!--<button ng-click="openConfirmModal()">-->
+            <!--<i class="icon ion-trash-b"/>-->
+        <!--</button>-->
+
+        <!--<a class="btn btn-default" href="{{currentSession.audioUrl}}" download>-->
+            <!--<i class="icon ion-android-download"/>-->
+        <!--</a>-->
+
+        <!--<button ng-click="share()">-->
+            <!--<i class="icon ion-android-share"/>-->
+        <!--</button>-->
+    <!--</div>-->
+    <div class="actions">
+        <div uib-dropdown
+             on-toggle="toggled(open)"
+             ng-show="!isPreview">
+            <a href class="options-drop" id="sessionActionsDropdown" uib-dropdown-toggle>
+                <i class="icon ion-android-more-vertical"></i>
+            </a>
+            <ul class="uib-dropdown-menu pull-right" aria-labelledby="sessionActionsDropdown">
+                <li>
+                    <button ng-click="openConfirmModal()">
+                        <i class="icon ion-trash-b"/> Delete
+                    </button>
+                </li>
+                <li>
+                    <a class="btn btn-default" href="{{currentSession.audioUrl}}" download>
+                        <i class="icon ion-android-download"/> Download
+                    </a>
+                </li>
+                <li>
+                    <button ng-click="share()">
+                        <i class="icon ion-android-share"/> Share
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+</div>

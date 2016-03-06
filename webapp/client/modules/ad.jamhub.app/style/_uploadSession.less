@@ -1,0 +1,45 @@
+.uploadSession {
+
+  .drop-box {
+    position: relative;
+    background-color: @dark-gray1;
+    height: 50px;
+
+    border-width: 1px 0 0 0;
+    border-style: dotted;
+
+    &:hover {
+      cursor: pointer;
+      background-color: @dark-gray1;
+    }
+
+    .loader {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      background-color: @primaryColor;
+    }
+    .message {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+    }
+  }
+  .dragover {
+    border-style: dashed;
+    background-color: @primaryColor;
+    color: #fff;
+
+  }
+
+}
+
+@media only screen and (max-width: @smallDevice) {
+  .uploadSession {
+    display: none;
+  }
+}

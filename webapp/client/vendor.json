@@ -1,0 +1,38 @@
+{
+  "js": [
+    "lib/jquery/dist/jquery.js",
+    "lib/lodash/dist/lodash.js",
+    "lib/angular/angular.js",
+    "lib/angular-animate/angular-animate.js",
+    "lib/angular-touch/angular-touch.js",
+    "lib/angular-sanitize/angular-sanitize.js",
+    "lib/angular-ui-router/release/angular-ui-router.js",
+    "lib/angular-ui-utils/ui-utils.js",
+    "lib/angular-uuid-service/uuid-svc.js",
+    "lib/angular-bootstrap/ui-bootstrap-tpls.js",
+    "lib/moment/moment.js",
+    "lib/angular-moment/angular-moment.js",
+    "lib/angular-slick/dist/slick.js",
+    "lib/wavesurfer.js/src/wavesurfer.js",
+    "lib/wavesurfer.js/src/util.js",
+    "lib/wavesurfer.js/src/webaudio.js",
+    "lib/wavesurfer.js/src/mediaelement.js",
+    "lib/wavesurfer.js/src/html-init.js",
+    "lib/wavesurfer.js/src/drawer.js",
+    "lib/wavesurfer.js/src/drawer.canvas.js",
+    "lib/wavesurfer.js/plugin/wavesurfer.regions.js",
+    "lib/wavesurfer.js/plugin/wavesurfer.timeline.js",
+    "lib/recorderjs/dist/recorder.js",
+    "lib/angular-local-storage/dist/angular-local-storage.js",
+    "lib/ng-file-upload/ng-file-upload.js",
+    "lib/ng-tags-input/ng-tags-input.js"
+  ],
+  "css": [
+    "lib/font-awesome/css/font-awesome.css",
+    "lib/ionicons/css/ionicons.css",
+    "lib/slick-carousel/slick/slick.css",
+    "lib/slick-carousel/slick/slick-theme.css",
+    "lib/ng-tags-input/ng-tags-input.css"
+
+  ]
+}

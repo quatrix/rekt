@@ -1,0 +1,139 @@
+
+@input-range-height: 16px;
+@input-range-thumb-width: 12px;
+@input-range-bg-color: @light-gray;
+@input-range-fg-color: @primaryColor;
+@color1: @dark-gray1;
+@color2: @light-gray;
+
+
+input[type="range"] {
+  height: 3px;
+  border-radius: 4px;
+  -moz-border-radius: 4px;
+  -webkit-appearance: none;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none !important;
+    width: 12px;
+    height: 12px;
+    border-radius: 8px;
+    -moz-border-radius: 8px;
+    -wekkit-border-radius: 8px;
+    border: 1px solid lighten(@color1, 15%);
+
+    background: @color1;
+    -webkit-appearance: none;
+
+    background: @color1;
+    background: -webkit-gradient(left top, right bottom, color-stop(0%, @color2), color-stop(21%, lighten(@color2, 10%)), color-stop(75%, lighten(@color2, 20%)), color-stop(100%, @color1));
+    background: -webkit-linear-gradient(-45deg, @color2 0%, lighten(@color2, 10%) 21%, lighten(@color2, 20%) 75%, @color2 100%);
+    background: -o-linear-gradient(-45deg, @color2 0%, lighten(@color2, 10%) 21%, lighten(@color2, 20%) 75%, @color2 100%);
+    background: -ms-linear-gradient(-45deg, @color2 0%, lighten(@color2, 10%) 21%, lighten(@color2, 20%) 75%, @color2 100%);
+    background: linear-gradient(135deg, @color2 0%, lighten(@color2, 10%) 21%, lighten(@color2, 20%) 75%, @color2 100%);
+
+    &:hover {
+      -webkit-appearance: none !important;
+      width: 12px;
+      height: 12px;
+      border-radius: 8px;
+      -moz-border-radius: 8px;
+      -wekkit-border-radius: 8px;
+      border: 1px solid lighten(@color1, 15%);
+
+      background: @color1;
+      -webkit-appearance: none;
+
+      background: @color1;
+      background: -webkit-gradient(left top, right bottom, color-stop(0%, @color1), color-stop(25%, lighten(@color1, 20%)), color-stop(79%, lighten(@color1, 10%)), color-stop(100%, @color1));
+      background: -webkit-linear-gradient(-45deg, @color1 0%, lighten(@color1, 20%) 25%, lighten(@color1, 10%) 79%, @color1 100%);
+      background: -o-linear-gradient(-45deg, @color1 0%, lighten(@color1, 20%) 25%, lighten(@color1, 10%) 79%, @color1 100%);
+      background: -ms-linear-gradient(-45deg, @color1 0%, lighten(@color1, 20%) 25%, lighten(@color1, 10%) 79%, @color1 100%);
+      background: linear-gradient(135deg, @color1 0%, lighten(@color1, 20%) 25%, lighten(@color1, 10%) 79%, @color1 100%);
+    }
+  }
+
+  &::-moz-range-track {
+    background: lighten(@color1, 30%);
+    border: none;
+    border-radius: 3px;
+  }
+
+  &::-moz-range-thumb {
+    border: none;
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    background: -moz-linear-gradient(-45deg, @color2 0%, lighten(@color2, 10%) 21%, lighten(@color2, 20%) 75%, @color2 100%);
+  }
+
+  /*hide the outline behind the border*/
+  &:-moz-focusring {
+    outline: 1px solid white;
+    outline-offset: -1px;
+  }
+
+  &:focus::-moz-range-track {
+    background: @color2;
+  }
+}
+
+
+input[type="range"] {
+  -webkit-appearance: none;
+  height: @input-range-height;
+  background: @input-range-bg-color;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+input[type="range"]::-webkit-slider-thumb, input[type="range"]::-webkit-slider-thumb:hover {
+  -webkit-appearance: none;
+  width: @input-range-thumb-width;
+  height: @input-range-height;
+  background: #ffffff;
+  border-radius: 0;
+  border: none;
+  position: relative;
+  z-index: 1; //reduced from 3 with much QA
+}
+
+input[type="range"]::-webkit-slider-thumb:after {
+  content: " ";
+  width: 2000px;
+  height: @input-range-height;
+  position: absolute;
+  z-index: 1;
+  right: @input-range-thumb-width;
+  top: 0;
+  background: @input-range-fg-color;
+  pointer-events: none;
+}
+
+//FIREFOX
+input[type=range]::-moz-range-track {
+  height: @input-range-height;
+  background: @input-range-bg-color;
+  border: none;
+  border-radius: 0;
+}
+
+input[type=range]::-moz-range-thumb {
+  border: 1px solid @input-range-bg-color;
+  height: @input-range-height;
+  width: @input-range-thumb-width;
+  border-radius: 0;
+  background: #ffffff;
+}
+
+/*hide the outline behind the border*/
+input[type=range]:-moz-focusring {
+  outline: 0px solid white;
+  outline-offset: -1px;
+}
+
+input[type=range]:focus::-moz-range-track {
+  background: @input-range-bg-color;
+}
