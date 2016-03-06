@@ -23,6 +23,6 @@
     "angular-local-storage": "~0.2.3",
     "ng-file-upload": "~10.1.14",
     "ng-tags-input": "~3.0.0",
-    "Recorderjs": "~0.1.0"
+    "Recorderjs": ""
   }
 }
