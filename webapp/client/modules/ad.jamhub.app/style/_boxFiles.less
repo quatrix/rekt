@@ -1,0 +1,83 @@
+.box-files-form {
+  display: flex;
+  display:-webkit-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  background-color: @dark-gray1;
+
+  .title {
+    color: #fff;
+    font-size: 30px;
+    Font-weight: bold;
+    text-align: center;
+  }
+  .box {
+    position: relative;
+    margin: 0 auto;
+    width: 360px;
+    padding: 30px;
+    background-color: #fff;
+    border: 1px solid;
+
+    .spinner-wrapper{
+      background: rgba(255,255,255,0.6);
+      position: absolute;
+      top:0;
+      bottom:0;
+      left:0;
+      right:0;
+      z-index: 1;
+      .spinner{
+        top: 50%;
+        margin-top: -10px;
+      }
+    }
+
+
+    input{
+      color: #000;
+    }
+    .hidden{
+      display: none;
+    }
+  }
+
+
+  .download-message{
+    color:#fff;
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+
+    a[disabled]{
+      color: rgba(255,255,255,0.2);
+    }
+  }
+}
+
+@media only screen and (max-width: @smallDevice) {
+  .box-files-form{
+    padding: 10px;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+
+    .floating-button-left{
+      position: static;
+      margin-bottom: 20px;
+      flex-shrink: 0;
+    }
+
+    .box{
+      width: auto;
+    }
+
+    .download-message{
+      margin-top: 40px;
+      position: static;
+    }
+  }
+}

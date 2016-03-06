@@ -1,0 +1,19 @@
+<div class="table-wrapper">
+    <input type="text" class="sessions-filter" ng-model="filterText" placeholder="Filter sessions by name & tags"/>
+
+    <table data-toggle="table" class="table table-hover">
+        <tbody>
+        <tr ng-repeat="session in options.sessions  | filter:filterText"
+            ng-click="options.switchSession(session.id)"
+            ng-class="{active: options.currentSessionId === session.id}">
+            <td uib-tooltip="{{session.date * 1000 | amDateFormat:'llll'}}">
+                <div class="index">{{options.sessions.length - $index}} |</div>
+                <div class="session-name">{{sessionName(session.name, session.date)}}</div>
+                <div class="tags">
+                    <span ng-repeat="tag in session.tags | filter:filterText">{{tag.text}}</span>
+                </div>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,50 @@
+<div class="player" resize>
+    <ng-wavesurfer url="{{currentSession.audioUrl}}"
+                   wave-color="{{waveOptions.waveColor}}"
+                   progress-color="{{waveOptions.progressColor}}"
+                   height="{{waveOptions.height}}"
+                   peaks="{{currentSession.peaks}}"
+                   normalize="true"
+                   backend="MediaElement"
+                   cursor-color ="{{waveOptions.cursorColor}}"
+                   window-width="windowWidth">
+    </ng-wavesurfer>
+    <div class="loading-bar"
+         ng-style="{width: loadingPrc +'%'}"
+         ng-show="loadingPrc != 100">
+    </div>
+    <div id="session-wave-timeline"
+         ng-show="loadingPrc == 100"></div>
+
+    <div class="footer">
+
+        <div class="actions">
+            <button class="btn btn-icon btn-play light" uib-tooltip="Play" ng-click="wavesurfer.playPause()">
+                <span id="play" ng-show="paused">
+                    <i class="icon ion-play"></i>
+                </span>
+                <span id="pause" ng-show="!paused" uib-tooltip="Pause" class="ng-hide">
+                    <i class="icon ion-pause"></i>
+                </span>
+            </button>
+
+            <button class="btn btn-icon light" uib-tooltip="Next Marker" ng-click="skipToMarker('prev')">
+                <i class="icon ion-ios-skipbackward"></i>
+            </button>
+
+            <button class="btn btn-icon light" uib-tooltip="Next Marker" ng-click="skipToMarker('next')">
+                    <i class="icon ion-ios-skipforward"></i>
+            </button>
+
+            <input id="sessionZoomSlider" data-action="zoom" type="range" min="0" max="{{maxZoom}}" value="0">
+
+
+        </div>
+
+        <div class="info">
+           {{secsToTimeStamp(currentTime)}}
+        </div>
+
+    </div>
+
+</div>

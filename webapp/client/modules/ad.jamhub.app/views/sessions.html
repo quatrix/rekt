@@ -1,0 +1,120 @@
+<div class="page" resize>
+    <navbar></navbar>
+    <div class="layout-left-sidebar">
+
+        <div class="side-bar sessions-table" ng-show="showSideBar || windowWidth >768">
+            <!--<div class="title">Full Sessions</div>-->
+            <button class="btn-icon close-btn"
+                    ng-click="showSideBar = false">
+                <i class="icon ion-close"/>
+            </button>
+            <sessions-table options="sessionsTableOptions"></sessions-table>
+            <upload-session reload-sessions="reloadSessions"></upload-session>
+        </div>
+        <div class="main-column session">
+            <session-tool-bar current-session="currentSession"
+                              options="sessionOptions"
+                              show-side-bar="showSideBar"></session-tool-bar>
+            <session-player current-session="currentSession"
+                            active-slice="activeSlice"
+                            update-slices="updateSlices"></session-player>
+            <div class="slices">
+                <div class="header">
+                    <div class="title">
+                        Slices
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-default"  ng-click="clearSlices()">
+                            Clear Slices
+                        </button>
+                        <button class="btn btn-default" ng-click="addSlice()">
+                            Add Slices
+                        </button>
+                    </div>
+                </div>
+                <div class="embeded-message" ng-show="showNoSlicesMessage()">
+                    <div class="title">
+                        No Slices
+                    </div>
+                    <div class="subtitle">
+                        Click "Add slice" to trime regions in your session
+                    </div>
+                </div>
+                <div class="uil-ring-css spinner" ng-show="isLoading">
+                    <div></div>
+                </div>
+                <slice-player
+                        ng-repeat="slice in currentSession.slices"
+                        current-session="currentSession"
+                        active-slice="activeSlice"
+                        slice="slice"
+                        slice-index="$index"
+                        id="{{'slice'+$index}}"
+                        ng-mouseover="setActiveSlice(slice)"
+                        ng-mouseleave="setActiveSlice(null)">
+                </slice-player>
+            </div>
+            <div class="metadata">
+
+                <session-tags save-session-tags = "saveSessionTags" current-session = "currentSession"></session-tags>
+
+                <!--<button class="btn btn-default" ng-click="setCustomMarkers()">Set markers</button>-->
+
+                <a class="title" ng-click="showSessionInfo = !showSessionInfo">
+                    <span class="icon-wrapper">
+                        <i class="icon ion-arrow-right-b"
+                           ng-class="showSessionInfo ? 'ion-arrow-down-b' : 'ion-arrow-right-b'"></i>
+                    </span>
+                    Info</a>
+
+                <div uib-collapse="!showSessionInfo">
+                    <ul>
+                        <li>
+                            <span class="subtitle">Name: </span>{{currentSession.name}}
+                        </li>
+                        <li>
+                            <span class="subtitle">Date: </span>{{currentSession.date * 1000 | amDateFormat:'llll'}}
+                        </li>
+                        <li>
+                            <span class="subtitle">ID: </span>{{currentSession.id}}
+                        </li>
+                        <li>
+                            <span class="subtitle">Markers ({{currentSession.markers.length}}): </span>
+                            <ul>
+                                <li class="inline" ng-repeat=" marker in currentSession.markers">
+                                    {{secsToTimeStamp(marker.offset)}}&nbsp;&nbsp;|&nbsp;&nbsp;
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <span class="subtitle">Slices ({{currentSession.slices.length}}): </span>
+                            <ul>
+                                <li class="inline" ng-repeat=" slice in currentSession.slices">
+                                    {{secsToTimeStamp(slice.start)}} -
+                                    {{secsToTimeStamp(slice.end)}}&nbsp;&nbsp;|&nbsp;&nbsp;
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <span class="subtitle">Tags ({{currentSession.tags.length}}): </span>
+                            <ul>
+                                <li class="inline" ng-repeat=" tag in currentSession.tags">
+                                    {{tag.text}}, &nbsp;
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <span class="subtitle">Peaks: </span>{{currentSession.peaks.length}}
+                        </li>
+                        <li>
+                            <span class="subtitle">Direct link: </span>
+                            <a ng-href="{{currentSession.audioUrl}}">{{currentSession.audioUrl}}</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</div>

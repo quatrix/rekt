@@ -1,0 +1,35 @@
+<nav class="nav">
+    <div class="left">
+        <img class="" src="modules/ad.jamhub.app/style/images/webapp.logo.png" alt="Mimosa">
+
+        <div class="brand-name">Mimosa Console</div>
+    </div>
+
+    <div class="right">
+        <div uib-dropdown
+             on-toggle="toggled(open)"
+             ng-show="!isPreview">
+            <a href class="nav-link" id="settingsDropdown" uib-dropdown-toggle>
+                <i class="icon nav-icon ion-ios-gear"></i>
+            </a>
+            <ul class="uib-dropdown-menu pull-right" aria-labelledby="settingsDropdown">
+                <li>
+                    <a href ng-click="signOut()">Sign Out</a>
+                </li>
+                <li>
+                    <a href="#!/boxapp">Box Wifi configuration</a>
+                </li>
+            </ul>
+        </div>
+        <div class="username">
+            {{user.userName}}
+        </div>
+        <div>
+            <a ui-sref="sessions" ng-show="isPreview">Go to app</a>
+        </div>
+    </div>
+</nav>
+
+
+
+

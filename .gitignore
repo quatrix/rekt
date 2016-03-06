@@ -58,3 +58,7 @@ target/
 
 *.swp
 sessions.db
+
+webapp/node_modules
+webapp/client/lib
+

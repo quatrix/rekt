@@ -1,0 +1,86 @@
+.session-tool-bar {
+
+  display: flex;
+  display: -webkit-flex;
+  background: #FFFFFF;
+  border: 1px solid #CDCDCD;
+  box-shadow: 0px 2px 3px 0px rgba(0, 0, 0, 0.22);
+
+  .hamburger {
+    display: none;
+    height: 60px;
+    width: 40px;
+    text-align: center;
+  }
+
+  .title {
+    flex: 1;
+    display: flex;
+    display: -webkit-flex;
+    align-items: center;
+    margin: 0 10px;
+    font-weight: lighter;
+    font-size: 22px;
+    color: @dark-gray1;
+
+    #inputShadow{
+      visibility: hidden;
+      position: absolute;
+      z-index: -1;
+      border: 1px solid red;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    input{
+      border:1px solid transparent;
+      outline: none;
+      &:hover{
+        border:1px solid @light-gray;
+      }
+    }
+    input.editmode{
+      border:1px solid @primaryColor;
+    }
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    
+
+    .options-drop{
+      width: 40px;
+      display: flex;
+      height: 40px;
+      justify-content: center;
+      align-items: center;
+      font-size: 22px;
+      color: #000;
+    }
+    li{
+      > button, > a {
+        text-align: left;
+        border-radius: 0;
+        padding: 10px;
+        width: 100%;
+        background: none;
+        border: none;
+        i {
+          font-size: 16px;
+          margin-right: 5px;
+        }
+      }
+    }
+
+  }
+
+}
+
+@media only screen and (max-width: @smallDevice) {
+  .session-tool-bar {
+    .hamburger {
+      display: block;
+    }
+  }
+}
